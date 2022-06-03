@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from functools import reduce
 from pgmpy.factors.base import BaseFactor
+import numpy as np
 
 def factor_product(*args):
     """
@@ -55,7 +56,7 @@ def factor_product(*args):
         )
         
     # return reduce(lambda phi1, phi2: phi1 * phi2, args)
-    import numpy as np
+    
     return_prob = np.exp(args[0].values)
     for i in range(1, len(args)):
         return_prob *= np.exp(args[i].values)

@@ -35,6 +35,7 @@ def cal_interAUPriori():
     
     AU_cpt = (AU_cpt_tmp / num_EMO) + np.eye(num_AU)
     EMO2AU_cpt = EMO2AU_np
+    AU = list(map(int, AU))
     return EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU
 
 
