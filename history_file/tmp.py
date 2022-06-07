@@ -359,6 +359,24 @@ class UpdateGraph(nn.Module):
         return self.out_prob
 
 
+class UpdateGraph(nn.Module):
+    def __init__(self, in_channels, out_channels, W):
+        super(UpdateGraph, self).__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.W = torch.tensor(W, dtype=torch.float32)
+
+        self.fc = nn.Linear(in_channels, out_channels, bias=False)
+        self.fc.weight = Parameter(self.W.T)
+
+    def forward(self, x):
+        self.x = x
+        self.out = self.fc(self.x)
+        self.out_prob = F.normalize(self.out, p = 1, dim=1)
+        return self.out_prob
+
+
 
 if __name__ == '__main__':
     global device

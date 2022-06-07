@@ -2,6 +2,8 @@ import random
 
 import torch
 
+from materials import info_load
+
 
 def setup_seed(seed):
     random.seed(seed)
@@ -19,15 +21,5 @@ def loss_to_float(loss):
 
 def getDatasetInfo(dataset):
     if dataset == 'BP4D':
-        path_info = '/media/database/data2/Expression/BP4D/AUCoding/AU_OCC'
-        EMO_code_dict = {
-            'T1': 'happy',
-            'T2': 'sad',
-            'T3': 'surprise',
-            'T4': 'embarrassment',
-            'T5': 'fear',
-            'T6': 'physical pain',
-            'T7': 'anger',
-            'T8': 'disgust',
-        }
-    return path_info, EMO_code_dict
+        train_loader, test_loader = info_load.getBP4Ddata()
+    return train_loader, test_loader
