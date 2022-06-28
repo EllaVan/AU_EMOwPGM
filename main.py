@@ -1,5 +1,6 @@
 import argparse
 import datetime
+from errno import EMULTIHOP
 import pytz
 import os
 import shutil
@@ -15,11 +16,8 @@ import torch.optim as optim
 
 from tensorboardX import SummaryWriter
 
-from materials.process_priori import cal_interAUPriori
 from models.AU_EMO_BP import UpdateGraph
-from models.AU_EMO_bayes import initGraph, AU_EMO_bayesGraph
-from InferPGM.inference import VariableElimination
-
+from models.RadiationAUs import RadiateAUs
 import utils
 
 
@@ -38,6 +36,8 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=64)
 
     parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--AUthresh', type=float, default=0.6)
+    parser.add_argument('--zeroPad', type=float, default=1e-4)
     
     return parser.parse_args()
 
@@ -54,51 +54,62 @@ def run_myIdea(args):
     AU2index_dict = dict(zip(list(map(int, AU)), range(len(AU))))
     index2AU_dict = dict(zip(range(len(AU)), list(map(int, AU))))
 
-    EMO2AU_cpt = np.where(EMO2AU_cpt > 0, EMO2AU_cpt, 1e-4)
+    num_all_img = np.sum(np.array(EMO_img_num))
+    # AU = AU[:-2]
+    AU_cpt = AU_cpt - np.eye(len(AU))
+    AU_ij_cnt = AU_cpt * num_all_img
+    AU_cnt = prob_AU * num_all_img
+    # EMO2AU_cpt = EMO2AU_cpt[:, :-2]
+    # prob_AU = prob_AU[:-2]
 
     save_pkl = {}
     save_pkl['ori_EMO2AU'] = EMO2AU_cpt
+    save_pkl['ori_AU_cpt'] = AU_cpt
+    save_pkl['ori_prob_AU'] = prob_AU
 
     # 交叉熵损失函数
     CE = nn.CrossEntropyLoss()
     acc_record = []
     err_record = []
-    AU_occ = dict(zip(AU, [0]*len(AU)))
-    a = 0
-    AU = AU[:-2]
     
     for idx, (cur_item, emo_label, index) in enumerate(train_loader, 1):
         weight = []
         occ_au = []
-        abs_au = []
         
         for i, au in enumerate(AU):
             if cur_item[0, au] == 1:
                 occ_au.append(i)
-                weight.append(EMO2AU_cpt[:, i])
-                AU_occ[au] += 1
-            elif cur_item[0, au] == 0:
-                abs_au.append(i)
-                weight.append(np.array([1-value for value in list(EMO2AU_cpt[:, i])]))
+                AU_cnt[i] += 1
+            weight.append(EMO2AU_cpt[:, i])
 
-        if len(occ_au) != 0:
-            
-            if emo_label == 0:
-                weight.append(EMO2AU_cpt[:, -2])
-                weight.append(np.array([1-value for value in list(EMO2AU_cpt[:, -1])]))
-            elif emo_label == 2 or emo_label == 4:
-                weight.append(EMO2AU_cpt[:, -2])
-                weight.append(EMO2AU_cpt[:, -1])
-            elif emo_label == 5:
-                weight.append(np.array([1-value for value in list(EMO2AU_cpt[:, -2])]))
-                weight.append(EMO2AU_cpt[:, -1])
-            else:
-                weight.append(np.array([1-value for value in list(EMO2AU_cpt[:, -2])]))
-                weight.append(np.array([1-value for value in list(EMO2AU_cpt[:, -1])]))
-
+        if len(occ_au) >= 4:
+            num_all_img += 1
+            prob_all_au = RadiateAUs(AU_cpt, occ_au, thresh=args.AUthresh)
+            pos = np.where(prob_all_au == 1)[0] # pos = np.where(prob_all_au > args.AUthresh)[0]
             weight = np.array(weight)
-            weight = np.where(weight > 0, weight, 1e-4)
-            update = UpdateGraph(in_channels=1, out_channels=len(EMO), W=weight).to(device)
+            
+            prob_all_au[-2] = 1 / prob_AU[-2]
+            prob_all_au[-1] = 1 / prob_AU[-1]
+            if emo_label == 0:
+                weight[-1, :] = 1 - weight[-1, :]
+            elif emo_label == 2 or emo_label == 4:
+                pass
+            elif emo_label == 5:
+                weight[-2, :] = 1 - weight[-2, :]
+            else:
+                weight[-2, :] = 1 - weight[-2, :]
+                weight[-1, :] = 1 - weight[-1, :]
+            
+            for i in range(prob_all_au.shape[0]-2):
+                if i in pos:
+                    prob_all_au[i] = prob_all_au[i] / prob_AU[i]
+                else:
+                    prob_all_au[i] = 1 / prob_AU[i]
+                    weight[i, :] = 1 - weight[i, :]
+            
+            prob_all_au_cp = prob_all_au.copy()
+            weight = np.where(weight > 0, weight, args.zeroPad)
+            update = UpdateGraph(in_channels=1, out_channels=len(EMO), W=weight, prob_all_au=prob_all_au).to(device)
             optim_graph = optim.SGD(update.parameters(), lr=args.lr)
             
             AU_evidence = torch.ones((1, 1)).to(device)
@@ -116,31 +127,66 @@ def run_myIdea(args):
             optim_graph.zero_grad()
             err.backward()
             optim_graph.step()
-                        
-            new_EMO2AU_cpt = EMO2AU_cpt
-            update_info = update.fc.weight.grad.cpu().numpy()
-            summary_writer.add_scalar('update_info', update_info[emo_label], idx)
-            for i, j in enumerate(AU):
-                factor = 1
-                if i in occ_au:
-                    new_EMO2AU_cpt[emo_label, i] += args.lr*np.abs(update_info[emo_label]*factor)
-                else:
-                    new_EMO2AU_cpt[emo_label, i] -= args.lr*np.abs(update_info[emo_label]*factor)
-            EMO2AU_cpt_tmp = np.array(EMO2AU_cpt)
-
-            EMO2AU_cpt_tmp = np.where(EMO2AU_cpt_tmp > 0, EMO2AU_cpt_tmp, 1e-4)
-            EMO2AU_cpt = np.where(EMO2AU_cpt_tmp <= 1, EMO2AU_cpt_tmp, 1)
             
-            if idx == 10000:
+            new_EMO2AU_cpt = EMO2AU_cpt
+            update_info1 = update.fc.weight.grad.cpu().numpy()
+            update_info2 = update.d1.cpu().numpy().squeeze()
+            for i, j in enumerate(AU[:-2]):
+                # factor = prob_all_au_cp[i]
+                factor = update_info2[emo_label] / weight[i, emo_label]
+                if i in pos:
+                    new_EMO2AU_cpt[emo_label, i] += args.lr*np.abs(update_info1[emo_label]*factor)
+                else:
+                    new_EMO2AU_cpt[emo_label, i] -= args.lr*np.abs(update_info1[emo_label]*factor)
+
+            if emo_label == 0:
+                factor = update_info2[emo_label] / weight[-2, emo_label]
+                new_EMO2AU_cpt[emo_label, -2] += args.lr*np.abs(update_info1[emo_label]*factor)
+                factor = update_info2[emo_label] / weight[-1, emo_label]
+                new_EMO2AU_cpt[emo_label, -1] -= args.lr*np.abs(update_info1[emo_label]*factor)
+            elif emo_label == 2 or emo_label == 4:
+                factor = update_info2[emo_label] / weight[-2, emo_label]
+                new_EMO2AU_cpt[emo_label, -2] += args.lr*np.abs(update_info1[emo_label]*factor)
+                factor = update_info2[emo_label] / weight[-1, emo_label]
+                new_EMO2AU_cpt[emo_label, -1] += args.lr*np.abs(update_info1[emo_label]*factor)
+            elif emo_label == 5:
+                factor = update_info2[emo_label] / weight[-2, emo_label]
+                new_EMO2AU_cpt[emo_label, -2] -= args.lr*np.abs(update_info1[emo_label]*factor)
+                factor = update_info2[emo_label] / weight[-1, emo_label]
+                new_EMO2AU_cpt[emo_label, -1] += args.lr*np.abs(update_info1[emo_label]*factor)
+            else:
+                factor = update_info2[emo_label] / weight[-2, emo_label]
+                new_EMO2AU_cpt[emo_label, -2] -= args.lr*np.abs(update_info1[emo_label]*factor)
+                factor = update_info2[emo_label] / weight[-1, emo_label]
+                new_EMO2AU_cpt[emo_label, -1] -= args.lr*np.abs(update_info1[emo_label]*factor)
+            
+            EMO2AU_cpt = np.array(new_EMO2AU_cpt)
+            EMO2AU_cpt = np.where(EMO2AU_cpt > 0, EMO2AU_cpt, 1e-4)
+            EMO2AU_cpt = np.where(EMO2AU_cpt <= 1, EMO2AU_cpt, 1)
+
+            for i, au_i in enumerate(occ_au):
+                for j, au_j in enumerate(occ_au):
+                    if i != j:
+                        AU_ij_cnt[au_i][au_j] += 1
+                        AU_cpt[au_i][au_j] = AU_ij_cnt[au_i][au_j] / AU_cnt[au_j]
+            for i, j in enumerate(AU):
+                prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (len(EMO))
+            prob_AU = np.where(prob_AU > 0, prob_AU, args.zeroPad)
+            prob_AU = np.where(prob_AU <= 1, prob_AU, 1)
+            if idx == 20000:
                 args.lr /= 10.0
 
     save_pkl['new_EMO2AU'] = EMO2AU_cpt
-    save_pkl['AU_occ'] = AU_occ
+    save_pkl['new_AU_cpt'] = AU_cpt
     save_pkl['train_size'] = len(train_loader)
+    save_pkl['new_prob_AU'] = prob_AU
+    save_pkl['AU_cnt'] = AU_cnt
+    save_pkl['AU_ij_cnt'] = AU_ij_cnt
     with open(os.path.join(args.save_path, 'results.pkl'), 'wb') as fo:
         pkl.dump(save_pkl, fo)
     fo.close()
-    print(a)
+
+    end_flag = True
     
 
 if __name__ == '__main__':
@@ -164,3 +210,4 @@ if __name__ == '__main__':
 
     print('%s based Update' % (args.dataset))
     run_myIdea(args)
+    

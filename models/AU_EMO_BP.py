@@ -51,23 +51,25 @@ AU_evidence = { 'AU1':1,
 
 
 class UpdateGraph(nn.Module):
-    def __init__(self, in_channels=1, out_channels=6, W=None):
+    def __init__(self, in_channels=1, out_channels=6, W=None, prob_all_au=None):
         super(UpdateGraph, self).__init__()
 
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.W = torch.tensor(W, dtype=torch.float32)
+        if prob_all_au is None:
+            prob_all_au = [[1]] * W.shape[0]
+        self.prob_all_au = torch.tensor(prob_all_au, dtype=torch.float32)
         
         self.d = torch.zeros((self.in_channels, self.out_channels))
         for i in range(self.W.shape[1]):
             self.d[:, i] = 1
             for j in range(self.W.shape[0]):
-                self.d[:, i] *= self.W[j][i]
-        self.d = F.normalize(self.d, p = 1, dim=1)
-        self.d = Parameter(self.d, requires_grad=True)
-
+                self.d[:, i] *= self.W[j][i]*self.prob_all_au[j]
+        self.d1 = F.normalize(self.d, p = 1, dim=1)
+        # self.d1 = self.d / torch.sum(self.d)
         self.fc = nn.Linear(in_channels, out_channels, bias=False)
-        self.fc.weight = Parameter(self.d.T)
+        self.fc.weight = Parameter(self.d1.T)
 
     def forward(self, x):
         self.x = x

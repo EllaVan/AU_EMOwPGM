@@ -71,7 +71,8 @@ class BP4DDataSet(data.Dataset):
             train_len = int(0.9 * len(datalist[k]))
             datalist_train += datalist[k][:train_len]
             labellist_train += [k]*train_len
-            datalist_test[k] = datalist[k][train_len:]
+            datalist_test_tmp = datalist[k][train_len:]
+            datalist_test[k] = tuple(zip([k]*len(datalist_test_tmp), datalist_test_tmp))
 
         AUlist_train = tuple(zip(labellist_train, datalist_train))
         random.shuffle(list(AUlist_train))
@@ -80,7 +81,7 @@ class BP4DDataSet(data.Dataset):
         data_pkl['train'] = AUlist_train
         data_pkl['test'] = datalist_test
         data_pkl['priori'] = priori
-        with open('/media/database/data4/wf/AU_EMOwPGM/codes/dataset/BP4D.pkl', 'wb') as fo:
+        with open('/media/database/data4/wf/AU_EMOwPGM/codes/dataset/BP4D2.pkl', 'wb') as fo:
             pkl.dump(data_pkl, fo)
         end_flag= True
 
