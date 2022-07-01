@@ -16,8 +16,11 @@ import torch.optim as optim
 
 from tensorboardX import SummaryWriter
 
+from pgmpy.inference import VariableElimination, BeliefPropagation
+from pgmpy.utils import get_example_model
+
 from models.AU_EMO_BP import UpdateGraph
-from models.RadiationAUs import RadiateAUs
+from models.RadiationAUs import RadiateAUs, interAUs
 import utils
 
 
@@ -33,7 +36,11 @@ def parse_args():
     parser.add_argument('--start_epoch', type=int, default=0)
     parser.add_argument('--end_epoch', type=int, default=0)
     parser.add_argument('--save_epoch', type=int, default=0)
-    parser.add_argument('--batch_size', type=int, default=64)
+
+    parser.add_argument('--model_interAU_idx', type=int, default=10000)
+    parser.add_argument('--infer_interAU_idx', type=int, default=20000)
+    parser.add_argument('--update_interAU_idx', type=int, default=2000)
+    parser.add_argument('--lr_decay_idx', type=int, default=20000)
 
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--AUthresh', type=float, default=0.6)
@@ -47,20 +54,13 @@ def run_myIdea(args):
     EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = tuple(train_loader.dataset.priori.values())
 
     summary_writer = SummaryWriter(args.save_path)
-    
-    # 建立索引和EMO/AU名称的双向映射
-    index2EMO_dict = dict(zip(range(len(EMO)), EMO))
-    EMO2index_dict = dict(zip(EMO, range(len(EMO)))) #通过名称找到index
-    AU2index_dict = dict(zip(list(map(int, AU)), range(len(AU))))
-    index2AU_dict = dict(zip(range(len(AU)), list(map(int, AU))))
 
-    num_all_img = np.sum(np.array(EMO_img_num))
-    # AU = AU[:-2]
+    nodes = ['AU'+str(au) for au in AU]
+    ori_size = np.sum(np.array(EMO_img_num))
+    num_all_img = ori_size
     AU_cpt = AU_cpt - np.eye(len(AU))
     AU_ij_cnt = AU_cpt * num_all_img
     AU_cnt = prob_AU * num_all_img
-    # EMO2AU_cpt = EMO2AU_cpt[:, :-2]
-    # prob_AU = prob_AU[:-2]
 
     save_pkl = {}
     save_pkl['ori_EMO2AU'] = EMO2AU_cpt
@@ -71,21 +71,35 @@ def run_myIdea(args):
     CE = nn.CrossEntropyLoss()
     acc_record = []
     err_record = []
-    
+
     for idx, (cur_item, emo_label, index) in enumerate(train_loader, 1):
+        variable = nodes.copy()
         weight = []
         occ_au = []
+        evidence = {}
+        prob_all_au = np.zeros((len(AU),))
         
+        cur_item = np.where(cur_item != 9, cur_item, 0)
         for i, au in enumerate(AU):
             if cur_item[0, au] == 1:
                 occ_au.append(i)
+                prob_all_au[i] = 1
                 AU_cnt[i] += 1
+                evidence['AU'+str(au)] = 1
+                variable.remove('AU'+str(au))
             weight.append(EMO2AU_cpt[:, i])
 
-        if len(occ_au) >= 4:
+        if len(occ_au) != 0:
             num_all_img += 1
-            prob_all_au = RadiateAUs(AU_cpt, occ_au, thresh=args.AUthresh)
-            pos = np.where(prob_all_au == 1)[0] # pos = np.where(prob_all_au > args.AUthresh)[0]
+            if idx > args.infer_interAU_idx:
+                interAU_infer = VariableElimination(interAU_model)
+                q = interAU_infer.query(variables=variable, evidence=evidence, joint=False, show_progress=False)
+                for i in range(len(nodes)):
+                    query_node = nodes[i]
+                    if query_node in variable:
+                        prob_all_au[i] = q[query_node].values[1]
+            
+            pos = np.where(prob_all_au > args.AUthresh)[0] # pos = np.where(prob_all_au == 1)[0]
             weight = np.array(weight)
             
             prob_all_au[-2] = 1 / prob_AU[-2]
@@ -106,8 +120,7 @@ def run_myIdea(args):
                 else:
                     prob_all_au[i] = 1 / prob_AU[i]
                     weight[i, :] = 1 - weight[i, :]
-            
-            prob_all_au_cp = prob_all_au.copy()
+                    
             weight = np.where(weight > 0, weight, args.zeroPad)
             update = UpdateGraph(in_channels=1, out_channels=len(EMO), W=weight, prob_all_au=prob_all_au).to(device)
             optim_graph = optim.SGD(update.parameters(), lr=args.lr)
@@ -132,7 +145,6 @@ def run_myIdea(args):
             update_info1 = update.fc.weight.grad.cpu().numpy()
             update_info2 = update.d1.cpu().numpy().squeeze()
             for i, j in enumerate(AU[:-2]):
-                # factor = prob_all_au_cp[i]
                 factor = update_info2[emo_label] / weight[i, emo_label]
                 if i in pos:
                     new_EMO2AU_cpt[emo_label, i] += args.lr*np.abs(update_info1[emo_label]*factor)
@@ -173,8 +185,23 @@ def run_myIdea(args):
                 prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (len(EMO))
             prob_AU = np.where(prob_AU > 0, prob_AU, args.zeroPad)
             prob_AU = np.where(prob_AU <= 1, prob_AU, 1)
-            if idx == 20000:
+
+            if idx == args.lr_decay_idx:
                 args.lr /= 10.0
+            if idx == args.model_interAU_idx:
+                interAU_model = interAUs(AU_cpt, AU, thresh=args.AUthresh)
+                fake_info = np.vstack([np.zeros_like(cur_item[0, AU].reshape(1, -1)),
+                                        np.ones_like(cur_item[0, AU].reshape(1, -1))])
+                interAU_info = pd.DataFrame(fake_info, columns=nodes)
+                interAU_model.fit(data=interAU_info)
+                num_prev = num_all_img
+                update_interAU_info = cur_item[0, AU].reshape(1, -1)
+            if idx > args.model_interAU_idx:
+                update_interAU_info = np.vstack([update_interAU_info, cur_item[0, AU].reshape(1, -1)])
+                if idx % (num_all_img-num_prev) == 0:
+                    interAU_info = pd.DataFrame(update_interAU_info, columns=nodes)
+                    interAU_model.fit_update(data=interAU_info, n_prev_samples=num_all_img-num_prev)
+                    update_interAU_info = cur_item[0, AU].reshape(1, -1)
 
     save_pkl['new_EMO2AU'] = EMO2AU_cpt
     save_pkl['new_AU_cpt'] = AU_cpt
@@ -182,10 +209,11 @@ def run_myIdea(args):
     save_pkl['new_prob_AU'] = prob_AU
     save_pkl['AU_cnt'] = AU_cnt
     save_pkl['AU_ij_cnt'] = AU_ij_cnt
+    save_pkl['interAU_model'] = interAU_model
     with open(os.path.join(args.save_path, 'results.pkl'), 'wb') as fo:
         pkl.dump(save_pkl, fo)
     fo.close()
-
+    interAU_model.save(os.path.join(args.save_path, 'interAU_model.bif'), filetype='bif')
     end_flag = True
     
 
@@ -207,6 +235,9 @@ if __name__ == '__main__':
         os.makedirs(args.save_path)
     else:
         os.makedirs(args.save_path)
+
+    if args.infer_interAU_idx < args.model_interAU_idx:
+        args.infer_interAU_idx = args.model_interAU_idx
 
     print('%s based Update' % (args.dataset))
     run_myIdea(args)
