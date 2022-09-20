@@ -1,0 +1,3 @@
+dataset_path_subject_independent: '/media/data1/wf/AU_EMOwPGM/codes/dataset/RAF-DB/RAF_subject_independent.pkl'
+num_classes: 17
+neighbor_num: 4

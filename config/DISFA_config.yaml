@@ -1,0 +1,4 @@
+dataset_path_subject_independent: '/media/data1/wf/AU_EMOwPGM/codes/dataset/DISFA/DISFA_subject_independent.pkl'
+dataset_path_subject_dependent: '/media/data1/wf/AU_EMOwPGM/codes/dataset/DISFA/DISFA_subject_dependent.pkl'
+num_classes: 12
+neighbor_num: 3
