@@ -87,7 +87,7 @@ class Bottleneck(nn.Module):
 
 class ResNet_EMO(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, include_top=True):
+    def __init__(self, block, layers, args, num_classes=1000, include_top=True):
         self.inplanes = 64
         super(ResNet_EMO, self).__init__()
         self.include_top = include_top
@@ -147,11 +147,11 @@ class ResNet_EMO(nn.Module):
         
         x = x.view(x.size(0), -1)
         x = self.fc(x)
-        return x
+        return x, None
 
 class ResNet_AU(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, args, num_classes=1000):
         super(ResNet_AU, self).__init__()
         self.inplanes = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -203,7 +203,7 @@ class ResNet_AU(nn.Module):
         b,c,h,w = x.shape
         x = x.view(b,c,-1).permute(0,2,1)
 
-        return x
+        return x, None
 
 class ResNet_backbone(nn.Module):
 

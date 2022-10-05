@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
+# sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 
 import random
 
@@ -57,15 +57,15 @@ def getDatasetInfo(conf):
     if conf.dataset == 'BP4D' or conf.dataset == 'CASME':
         train_dataset = BP4D(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
-        # train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
-        train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, sampler=ImbalancedDatasetSampler(train_dataset), shuffle=False,num_workers=conf.num_workers, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
+        # train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, sampler=ImbalancedDatasetSampler(train_dataset), shuffle=False,num_workers=conf.num_workers, pin_memory=True)
         test_dataset = BP4D(conf.dataset_path, phase='test', fold=conf.fold, transform=eval_transforms)
         test_len = len(test_dataset)
         test_loader = DataLoader(test_dataset, batch_size=conf.batch_size, shuffle=False, num_workers=conf.num_workers, pin_memory=True)
     elif conf.dataset == 'RAF-DB' or conf.dataset == 'RAF-DB_compound' or conf.dataset == 'AffectNet':
         train_dataset = RAF(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
-        # train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
         train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, sampler=ImbalancedDatasetSampler(train_dataset), shuffle=False,num_workers=conf.num_workers, pin_memory=True)
         test_dataset = RAF(conf.dataset_path, phase='test', fold=conf.fold, transform=eval_transforms)
         test_len = len(test_dataset)
@@ -139,8 +139,15 @@ def adjust_learning_rate(optimizer, epoch, epochs, init_lr, iteration, num_iter)
 def adjust_rules_lr(init_lr, iteration, num_iter):
     current_iter = iteration
     max_iter = num_iter
-    lr = init_lr * (1 + cos(pi * (1.0/2) * current_iter / max_iter)) / 2
+    lr = init_lr * (1 + cos(pi * (1.0/2) * current_iter / max_iter)) / 2 # * (1.0/2)
     return lr
+
+def adjust_rules_lr_v2(optimizer, init_lr, iteration, num_iter):
+    current_iter = iteration
+    max_iter = num_iter
+    lr = init_lr * (1 + cos(pi * (1.0/2) * current_iter / max_iter)) / 2 # * (1.0/2)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""

@@ -12,16 +12,17 @@ import pickle as pkl
 import time
 from tensorboardX import SummaryWriter
 
-# from models.TwoBranch import GraphAU, EAC
-from models.TwoBranch_v2 import GraphAU_SSL as GraphAU
-from models.TwoBranch_v2 import EAC_SSL as EAC
+from models.TwoBranch import GraphAU, EAC
+# from models.TwoBranch_v2 import GraphAU_SSL as GraphAU
+# from models.TwoBranch_v2 import EAC_SSL as EAC
+from models.StableNet.reweighting import weight_learner
 from models.rules_BP4D import *
 from losses import *
 from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
 
 def update_net_info(conf):
-    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_64_seed_0_lrEMO_0.01_lrAU_0.1_lr_relation_0.001/epoch20_model_fold0.pth'
+    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch4_model_fold0.pth'
     conf.net_params_from_dataset = 'BP4D'
     all_info = torch.load(conf.net_params_from_path, map_location='cpu')
     conf.train_f1_AU = all_info['train_input_info']['AU_info']['mean_f1_score']
@@ -34,6 +35,7 @@ def train(conf, net_AU, net_EMO, train_loader, optimizer_AU, optimizer_EMO, epoc
     losses_EMO = AverageMeter()
     accs_EMO = AccAverageMeter()
     criterion_EMO = nn.CrossEntropyLoss()
+    # criterion_EMO = nn.CrossEntropyLoss(reduce=False)
 
     net_AU, net_EMO = net_AU.to(device), net_EMO.to(device)
     net_AU.eval()
@@ -52,16 +54,21 @@ def train(conf, net_AU, net_EMO, train_loader, optimizer_AU, optimizer_EMO, epoc
             #-------------------------------AU train----------------------------
             labelsAU = labelsAU.float()
             if torch.cuda.is_available():
-                img1, img_SSL, img2, labelsEMO, labelsAU = img1.to(device), img_SSL.tp(device), img2.to(device), labelsEMO.to(device), labelsAU.to(device)
-            outputs_AU = net_AU(img1)
+                img1, img_SSL, img2, labelsEMO, labelsAU = img1.to(device), img_SSL.to(device), img2.to(device), labelsEMO.to(device), labelsAU.to(device)
+            outputs_AU, feature = net_AU(img1)
             #-------------------------------AU train----------------------------
         
             #-------------------------------EMO train----------------------------
             labelsEMO = labelsEMO.reshape(labelsEMO.shape[0])
-            output_EMO, hm1 = net_EMO(img1)
-            output_EMO_flip, hm2 = net_EMO(img2)
-            grid_l = generate_flip_grid(device, conf.w, conf.h)
+            output_EMO, hm1, features = net_EMO(img1)
+            output_EMO_flip, hm2, _ = net_EMO(img2)
+            # if features is not None:
+            #     weight1, net_EMO = weight_learner(features, net_EMO, conf, epoch, batch_i)
+
             loss1 = criterion_EMO(output_EMO, labelsEMO)
+            # loss1 = criterion_EMO(output_EMO, labelsEMO).view(1, -1).mm(weight1).view(1)
+
+            grid_l = generate_flip_grid(device, conf.w, conf.h)
             flip_loss_l = ACLoss(hm1, hm2, grid_l, output_EMO)
             loss_EMO = loss1 + conf.lam_EMO * flip_loss_l
             optimizer_EMO.zero_grad()
@@ -123,12 +130,12 @@ def val(net_AU, net_EMO, val_loader, criterion_AU):
                 labelsAU = labelsAU.float()
                 if torch.cuda.is_available():
                     img1, img_SSL, img2, labelsEMO, labelsAU = img1.to(device), img_SSL.to(device), img2.to(device), labelsEMO.to(device), labelsAU.to(device)
-                outputs_AU = net_AU(img1)
+                outputs_AU, feature = net_AU(img1)
                 #-------------------------------AU val----------------------------
         
                 #-------------------------------EMO val----------------------------
                 labelsEMO = labelsEMO.reshape(labelsEMO.shape[0])
-                outputs_EMO, _ = net_EMO(img1)
+                outputs_EMO, _, features = net_EMO(img1)
                 loss_EMO = criterion_EMO(outputs_EMO, labelsEMO)
                 _, predicts_EMO = torch.max(outputs_EMO, 1)
                 correct_num_EMO = torch.eq(predicts_EMO, labelsEMO).sum()
@@ -169,14 +176,14 @@ def main(conf):
 
     #---------------------------------AU Setting-----------------------------
     logging.info("Fold: [{} | {}  val_data_num: {} ]".format(conf.fold, conf.N_fold, test_len))
-    net_AU = GraphAU(num_classes=conf.num_classesAU, neighbor_num=conf.neighbor_num, metric=conf.metric)
+    net_AU = GraphAU(conf, num_classes=conf.num_classesAU, neighbor_num=conf.neighbor_num, metric=conf.metric)
 
     all_info = torch.load(conf.net_params_from_path, map_location='cpu')#['state_dict']
     state_dict_AU = all_info['state_dict_AU']
     net_AU.load_state_dict(state_dict_AU)
     net_AU = net_AU.to(device)
-
     train_weight_AU = torch.from_numpy(train_weight_AU).to(device)
+
     criterion_AU = WeightedAsymmetricLoss(weight=train_weight_AU)
     optimizer_AU = optim.AdamW(net_AU.parameters(),  betas=(0.9, 0.999), lr=conf.learning_rate_AU, weight_decay=conf.weight_decay)
     #---------------------------------AU Setting-----------------------------
@@ -184,9 +191,9 @@ def main(conf):
     #---------------------------------EMO Setting-----------------------------
     net_EMO = EAC(conf, num_classes=len(EMO)).to(device)
 
-    state_dict_EMO = all_info['state_dict_EMO']
-    net_EMO.load_state_dict(state_dict_EMO)
-    net_EMO = net_EMO.to(device)
+    # state_dict_EMO = all_info['state_dict_EMO']
+    # net_EMO.load_state_dict(state_dict_EMO)
+    # net_EMO = net_EMO.to(device)
 
     optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-4)
     scheduler_EMO = torch.optim.lr_scheduler.ExponentialLR(optimizer_EMO, gamma=0.9)
@@ -204,7 +211,7 @@ def main(conf):
     AU_p_d = (priori_AU, dataset_AU)
     source_list = [
                 ['predsAU_record', 'labelsEMO_record'],
-                ['predsAU_record', 'predsEMO_record']
+                # ['predsAU_record', 'predsEMO_record']
                 ]
     #---------------------------------RULE Setting-----------------------------
     logging.info('the init learning rate of EMO and rules are {}, {}'
@@ -248,45 +255,51 @@ def main(conf):
             }
             torch.save(checkpoint, os.path.join(conf['outdir'], 'epoch' + str(epoch + 1) + '_model_fold' + str(conf.fold) + '.pth'))
             
-            # for info_source in source_list:
-            #     f = 'epoch' + str(epoch + 1) + '_model_fold' + str(conf.fold) + '.pth'
-            #     logging.info('The current info source are {} and {}, the features are from {} '
-            #         .format(info_source[0], info_source[1], f))
-            #     train_rules_loss, train_rules_acc, train_confu_m, val_rules_loss, val_rules_acc, val_confu_m = main_rules(conf, device, f, info_source, AU_p_d)
+            for info_source in source_list:
+                f = 'epoch' + str(epoch + 1) + '_model_fold' + str(conf.fold) + '.pth'
+                logging.info('The current info source are {} and {}, the features are from {} '
+                    .format(info_source[0], info_source[1], f))
+                train_rules_loss, train_rules_acc, train_confu_m, val_rules_loss, val_rules_acc, val_confu_m = main_rules(conf, device, f, info_source, AU_p_d)
                 
-            #     infostr_rules = {'Epoch {} train_rules_loss: {:.5f}, train_rules_acc: {:.2f}, val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'
-            #                         .format(epoch+1, train_rules_loss, 100.* train_rules_acc, val_rules_loss, 100.* val_rules_acc)}
-            #     logging.info(infostr_rules)
-            #     infostr_EMO = {'EMO Rules Train Acc-list:'}
-            #     logging.info(infostr_EMO)
-            #     for i in range(train_confu_m.shape[0]):
-            #         train_confu_m[:, i] = train_confu_m[:, i] / train_confu_m[:, i].sum(axis=0)
-            #     infostr_EMO = dataset_info.info_EMO(torch.diag(train_confu_m).cpu().numpy().tolist())
-            #     logging.info(infostr_EMO)
+                infostr_rules = {'Epoch {} train_rules_loss: {:.5f}, train_rules_acc: {:.2f}, val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'
+                                    .format(epoch+1, train_rules_loss, 100.* train_rules_acc, val_rules_loss, 100.* val_rules_acc)}
+                logging.info(infostr_rules)
+                infostr_EMO = {'EMO Rules Train Acc-list:'}
+                logging.info(infostr_EMO)
+                for i in range(train_confu_m.shape[0]):
+                    train_confu_m[:, i] = train_confu_m[:, i] / train_confu_m[:, i].sum(axis=0)
+                infostr_EMO = dataset_info.info_EMO(torch.diag(train_confu_m).cpu().numpy().tolist())
+                logging.info(infostr_EMO)
                 
-            #     infostr_EMO = {'EMO Rules Val Acc-list:'}
-            #     logging.info(infostr_EMO)
-            #     for i in range(val_confu_m.shape[0]):
-            #         val_confu_m[:, i] = val_confu_m[:, i] / val_confu_m[:, i].sum(axis=0)
-            #     infostr_EMO = dataset_info.info_EMO(torch.diag(val_confu_m).cpu().numpy().tolist())
-            #     logging.info(infostr_EMO)
-            #     del train_rules_loss, train_rules_acc, train_confu_m, val_rules_loss, val_rules_acc, val_confu_m
+                infostr_EMO = {'EMO Rules Val Acc-list:'}
+                logging.info(infostr_EMO)
+                for i in range(val_confu_m.shape[0]):
+                    val_confu_m[:, i] = val_confu_m[:, i] / val_confu_m[:, i].sum(axis=0)
+                infostr_EMO = dataset_info.info_EMO(torch.diag(val_confu_m).cpu().numpy().tolist())
+                logging.info(infostr_EMO)
+                del train_rules_loss, train_rules_acc, train_confu_m, val_rules_loss, val_rules_acc, val_confu_m
 
     shutil.copyfile(os.path.join(conf['outdir'], 'train.log'), os.path.join(conf['outdir'], 'train_copy.log'))
 
 if __name__=='__main__':
     conf = parser2dict()
     conf.dataset = 'RAF-DB'
+
+    conf.gpu = 1
+    # conf.exp_name = 'Test'
+    
+    conf.learning_rate_AU = 0.0001
+    conf.learning_rate_EMO = 0.0003
+    # conf.epochs = 2
+    # conf.save_epoch = 1
+
     conf = get_config(conf)
     conf = update_net_info(conf)
-    conf.gpu = 3
 
     global device
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
-
-    # conf.epochs = 2
-    # conf.save_epoch = 1
+    torch.cuda.set_device(conf.gpu)
 
     set_env(conf)
     set_outdir(conf) # generate outdir name

@@ -46,7 +46,7 @@ def confusion_matrix(preds, labels, conf_matrix):
     - classes : 混淆矩阵中每一行每一列对应的列
     - normalize : True:显示百分比, False:显示个数
 '''
-def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues):
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues, save_path=None):
     cm2 = cm.copy()
     if normalize:
         for i in range(cm.shape[0]):
@@ -79,13 +79,13 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
     for i, j in itertools.product(range(cm2.shape[0]), range(cm2.shape[1])):
         # num = float('{:.2f}'.format(cm[i, j])) if normalize else int(cm[i, j])
         num = cm2[i, j]
-        plt.text(i, j, '{:.3f}'.format(cm2[i, j]),
+        plt.text(i, j, '{:.2f}'.format(100*cm2[i, j]),
                  verticalalignment='center',
                  horizontalalignment="center",
                  color="white" if num >= thresh else "black")
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
-    save_path = os.path.join('/media/data1/wf/AU_EMOwPGM/codes/save/CASME/statistics', title+'.jpg')
+    if save_path is None:
+        save_path = os.path.join('/media/data1/wf/AU_EMOwPGM/codes/save/CASME/statistics', title+'.jpg')
     plt.savefig(save_path, dpi=500)
-    plt.show()

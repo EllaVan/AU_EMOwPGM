@@ -3,6 +3,7 @@ import sys
 sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 import numpy as np
 import pickle as pkl
+import random
 
 from pgmpy.models import BayesianNetwork
 from pgmpy.factors.discrete import TabularCPD
@@ -21,16 +22,34 @@ def RadiateAUs(AU_cpt, occAU, prob_occAU=None, thresh=0.6, num_EMO=6):
     ra_au_1 = AU_cpt[:, occAU].reshape(len(occAU), -1) * prob_occAU
     ra_au_1 = np.where(ra_au_1 > thresh, ra_au_1, 0)
 
-    # factor = ra_au_1.copy()
-    # factor_sum = np.sum(factor, axis=0)
-    # for i in range(factor_sum.shape[0]):
-    #     if factor_sum[i] != 0:
-    #         factor[:, i] = factor[:, i] / factor_sum[i]
-    # ra_au_1 = factor * ra_au_1
+    prob_occAU1 = np.mean(ra_au_1, axis=0).reshape(-1, 1)
+    prob_all_au = prob_occAU1.copy()
+    prob_all_au[occAU, :] = prob_occAU
+    
+    return prob_all_au
+
+def static_op(conf, emo_label, prob_all_au, loc2, EMO2AU):
+    for i in loc2:
+        if EMO2AU[emo_label, i] - conf.zeroPad > 0:
+            prob_all_au[i, :] = 1
+    # if dataset == 'BP4D':
+    #     if emo_label == 0 or emo_label == 2 or emo_label == 4:
+    #         prob_all_au[-2, :] = 1
+    #     if emo_label == 2 or emo_label == 4:
+    #         prob_all_au[-1, :] = 1
+
+    return prob_all_au
+
+def RadiateAUs_v2(conf, emo_label, AU_cpt, occAU, loc2, EMO2AU, prob_occAU=None, thresh=0.6, num_EMO=6):
+    if prob_occAU is None:
+        prob_occAU = [[1]] * len(occAU)
+    ra_au_1 = AU_cpt[:, occAU].reshape(len(occAU), -1) * prob_occAU
+    ra_au_1 = np.where(ra_au_1 > thresh, ra_au_1, 0)
 
     prob_occAU1 = np.mean(ra_au_1, axis=0).reshape(-1, 1)
     prob_all_au = prob_occAU1.copy()
     prob_all_au[occAU, :] = prob_occAU
+    prob_all_au = static_op(conf, emo_label, prob_all_au, loc2, EMO2AU)
     
     return prob_all_au
 

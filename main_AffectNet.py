@@ -19,7 +19,7 @@ from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
 
 def update_net_info(conf):
-    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results0911/BP4D/Test/subject_independent/bs_64_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch4_model_fold0.pth'
+    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch4_model_fold0.pth'
     conf.net_params_from_dataset = 'BP4D'
     all_info = torch.load(conf.net_params_from_path, map_location='cpu')
     conf.train_f1_AU = all_info['val_input_info']['AU_info']['mean_f1_score']
@@ -44,20 +44,20 @@ def train(conf, net_AU, net_EMO, train_loader, optimizer_AU, optimizer_EMO, epoc
     predsAU_record = []
     predsEMO_record = []
 
-    for batch_i, (img1, img2, labelsEMO, labelsAU, index) in enumerate(train_loader):
+    for batch_i, (img1, img_SSL, img2, labelsEMO, labelsAU, index) in enumerate(train_loader):
         torch.cuda.empty_cache()
         if img1 is not None:
             #-------------------------------AU train----------------------------
             labelsAU = labelsAU.float()
             if torch.cuda.is_available():
                 img1, img2, labelsEMO, labelsAU = img1.to(device), img2.to(device), labelsEMO.to(device), labelsAU.to(device)
-            outputs_AU = net_AU(img1)
+            outputs_AU, feature = net_AU(img1)
             #-------------------------------AU train----------------------------
         
             #-------------------------------EMO train----------------------------
             labelsEMO = labelsEMO.reshape(labelsEMO.shape[0])
-            output_EMO, hm1 = net_EMO(img1)
-            output_EMO_flip, hm2 = net_EMO(img2)
+            output_EMO, hm1, _ = net_EMO(img1)
+            output_EMO_flip, hm2, _ = net_EMO(img2)
             grid_l = generate_flip_grid(device, conf.w, conf.h)
             loss1 = criterion_EMO(output_EMO, labelsEMO)
             flip_loss_l = ACLoss(hm1, hm2, grid_l, output_EMO)
@@ -113,7 +113,7 @@ def val(net_AU, net_EMO, val_loader, criterion_AU):
     predsAU_record = []
     predsEMO_record = []
     
-    for batch_i, (img1, img2, labelsEMO, labelsAU, index) in enumerate(val_loader):
+    for batch_i, (img1, img_SSL, img2, labelsEMO, labelsAU, index) in enumerate(val_loader):
         torch.cuda.empty_cache()
         if img1 is not None:
             with torch.no_grad():
@@ -121,12 +121,12 @@ def val(net_AU, net_EMO, val_loader, criterion_AU):
                 labelsAU = labelsAU.float()
                 if torch.cuda.is_available():
                     img1, img2, labelsEMO, labelsAU = img1.to(device), img2.to(device), labelsEMO.to(device), labelsAU.to(device)
-                outputs_AU = net_AU(img1)
+                outputs_AU, _ = net_AU(img1)
                 #-------------------------------AU val----------------------------
         
                 #-------------------------------EMO val----------------------------
                 labelsEMO = labelsEMO.reshape(labelsEMO.shape[0])
-                outputs_EMO, _ = net_EMO(img1)
+                outputs_EMO, _, _ = net_EMO(img1)
                 loss_EMO = criterion_EMO(outputs_EMO, labelsEMO)
                 _, predicts_EMO = torch.max(outputs_EMO, 1)
                 correct_num_EMO = torch.eq(predicts_EMO, labelsEMO).sum()
@@ -167,7 +167,7 @@ def main(conf):
 
     #---------------------------------AU Setting-----------------------------
     logging.info("Fold: [{} | {}  val_data_num: {} ]".format(conf.fold, conf.N_fold, test_len))
-    net_AU = GraphAU(num_classes=conf.num_classesAU, neighbor_num=conf.neighbor_num, metric=conf.metric)
+    net_AU = GraphAU(conf, num_classes=conf.num_classesAU, neighbor_num=conf.neighbor_num, metric=conf.metric)
 
     all_info = torch.load(conf.net_params_from_path, map_location='cpu')#['state_dict']
     state_dict_AU = all_info['state_dict_AU']
@@ -202,7 +202,7 @@ def main(conf):
     AU_p_d = (priori_AU, dataset_AU)
     source_list = [
                 ['predsAU_record', 'labelsEMO_record'],
-                ['predsAU_record', 'predsEMO_record']
+                # ['predsAU_record', 'predsEMO_record']
                 ]
     #---------------------------------RULE Setting-----------------------------
     logging.info('the init learning rate of EMO and rules are {}, {}'
@@ -275,13 +275,22 @@ def main(conf):
 if __name__=='__main__':
     conf = parser2dict()
     conf.dataset = 'AffectNet'
+
+    conf.gpu = 3
+    # conf.exp_name = 'Test'
+
+    conf.learning_rate_AU = 0.0001
+    conf.learning_rate_EMO = 0.0003
+    conf.epochs = 1
+    conf.save_epoch = 1
+
     conf = get_config(conf)
     conf = update_net_info(conf)
-    conf.gpu = 3
 
     global device
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
+    torch.cuda.set_device(conf.gpu)
 
     set_env(conf)
     set_outdir(conf) # generate outdir name

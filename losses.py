@@ -11,7 +11,7 @@ class WeightedAsymmetricLoss(nn.Module):
         self.eps = eps
         self.weight = weight
 
-    def forward(self, x, y):
+    def forward(self, x, y, weight1=None):
 
         xs_pos = x
         xs_neg = 1 - x
@@ -32,6 +32,11 @@ class WeightedAsymmetricLoss(nn.Module):
             loss = loss * self.weight.view(1,-1)
 
         loss = loss.mean(dim=-1)
+        
+        if weight1 is not None:
+            weight1.data=weight1.data.to(torch.float64)
+            loss = loss.view(1, -1).mm(weight1).view(1)
+        
         return -loss.mean()
 
 

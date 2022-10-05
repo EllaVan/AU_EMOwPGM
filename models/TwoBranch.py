@@ -5,19 +5,20 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .resnet import *
+# from .resnet_stable import *
 from .graph import normalize_digraph
 from .basic_block import *
 
-def resnet18_AU(pretrained=True, **kwargs): # Constructs a ResNet-18 model
-    model = ResNet_AU(BasicBlock, [2, 2, 2, 2], **kwargs)
+def resnet18_AU(args, pretrained=True, **kwargs): # Constructs a ResNet-18 model
+    model = ResNet_AU(BasicBlock, [2, 2, 2, 2], args=args, **kwargs)
     if pretrained:
         resnet18_path = '/media/data1/wf/GFE2N/codes/codes4/materials/resnet18-raw.pth'
         pre_state_dict = torch.load(resnet18_path)#['state_dict']
         model.load_state_dict(pre_state_dict, False)
     return model
 
-def resnet18_EMO(pretrained=True, **kwargs): # Constructs a ResNet-18 model
-    model = ResNet_EMO(BasicBlock, [2, 2, 2, 2], **kwargs)
+def resnet18_EMO(args, pretrained=True, **kwargs): # Constructs a ResNet-18 model
+    model = ResNet_EMO(BasicBlock, [2, 2, 2, 2], args=args, **kwargs)
     if pretrained:
         resnet18_path = '/media/data1/wf/GFE2N/codes/codes4/materials/resnet18-raw.pth'
         pre_state_dict = torch.load(resnet18_path)#['state_dict']
@@ -119,11 +120,11 @@ class GNN(nn.Module):
 class EAC(nn.Module):
     def __init__(self, args, pretrained=True, num_classes=7):
         super(EAC, self).__init__()
-        resnet18 = resnet18_EMO()
+        self.backbone = resnet18_EMO(args)
         self.num_classes = num_classes
         
-        self.features = nn.Sequential(*list(resnet18.children())[:-2])  
-        self.features2 = nn.Sequential(*list(resnet18.children())[-2:-1])  
+        self.features = nn.Sequential(*list(self.backbone.children())[:-2])  
+        self.features2 = nn.Sequential(*list(self.backbone.children())[-2:-1])  
         self.fc = nn.Linear(512, num_classes)  
         
         
@@ -144,12 +145,12 @@ class EAC(nn.Module):
         hm = feat * fc_weights
         hm = hm.sum(2) # N * self.num_labels * H * W
 
-        return output, hm
+        return output, hm, feature
 
 class GraphAU(nn.Module):
-    def __init__(self, num_classes=12, neighbor_num=4, metric='dots'):
+    def __init__(self, args, num_classes=12, neighbor_num=4, metric='dots'):
         super(GraphAU, self).__init__()
-        self.backbone = resnet18_AU()
+        self.backbone = resnet18_AU(args)
         self.in_channels = self.backbone.fc.weight.shape[1]
         self.out_channels = self.in_channels // 4
         self.backbone.fc = None
@@ -159,7 +160,7 @@ class GraphAU(nn.Module):
 
     def forward(self, x):
         # x: b d c
-        x = self.backbone(x) # 1* 49 * 512
+        x, feature = self.backbone(x) # 1* 49 * 512
         x = self.global_linear(x)
         cl = self.head(x)
-        return cl
+        return cl, feature
