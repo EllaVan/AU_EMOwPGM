@@ -2,6 +2,9 @@ import sys
 # sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 
 import random
+import matplotlib.pyplot as plt
+import numpy as np
+import itertools
 
 from math import cos, pi
 import torch
@@ -53,6 +56,50 @@ def loss_to_float(loss):
     else:
         return float(loss)
 
+def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues, save_path=None):
+    cm2 = cm.copy()
+    if normalize:
+        for i in range(cm.shape[0]):
+            cm2[:, i] = cm[:, i] / cm[:, i].sum(axis=0)
+        # cm = cm.astype('float') / cm.sum(axis=0)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+    print(cm2)
+    plt.imshow(cm2, interpolation='nearest', cmap="YlGnBu")
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+    
+	# 。。。。。。。。。。。。新增代码开始处。。。。。。。。。。。。。。。。
+	# x,y轴长度一致(问题1解决办法）
+    plt.axis("equal")
+    # x轴处理一下，如果x轴或者y轴两边有空白的话(问题2解决办法）
+    ax = plt.gca()  # 获得当前axis
+    left, right = plt.xlim()  # 获得x轴最大最小值
+    ax.spines['left'].set_position(('data', left))
+    ax.spines['right'].set_position(('data', right))
+    for edge_i in ['top', 'bottom', 'right', 'left']:
+        ax.spines[edge_i].set_edgecolor("white")
+	# 。。。。。。。。。。。。新增代码结束处。。。。。。。。。。。。。。。。
+
+    thresh = cm2.max() / 2.
+    for i, j in itertools.product(range(cm2.shape[0]), range(cm2.shape[1])):
+        # num = float('{:.2f}'.format(cm[i, j])) if normalize else int(cm[i, j])
+        num = cm2[i, j]
+        plt.text(i, j, '{:.2f}'.format(100*cm2[i, j]),
+                 verticalalignment='center',
+                 horizontalalignment="center",
+                 color="white" if num >= thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    if save_path is None:
+        save_path = os.path.join('/media/data1/wf/AU_EMOwPGM/codes/save/CASME/statistics', title+'.jpg')
+    plt.savefig(save_path, dpi=500)
+
 def getDatasetInfo(conf):
     if conf.dataset == 'BP4D' or conf.dataset == 'CASME':
         train_dataset = BP4D(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
@@ -66,7 +113,7 @@ def getDatasetInfo(conf):
         train_dataset = RAF(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
         train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
-        train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, sampler=ImbalancedDatasetSampler(train_dataset), shuffle=False,num_workers=conf.num_workers, pin_memory=True)
+        # train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, sampler=ImbalancedDatasetSampler(train_dataset), shuffle=False,num_workers=conf.num_workers, pin_memory=True)
         test_dataset = RAF(conf.dataset_path, phase='test', fold=conf.fold, transform=eval_transforms)
         test_len = len(test_dataset)
         test_loader = DataLoader(test_dataset, batch_size=conf.batch_size, shuffle=False, num_workers=conf.num_workers, pin_memory=True)
@@ -224,9 +271,9 @@ def calc_f1_score(statistics_list):
         FP = statistics_list[i]['FP']
         FN = statistics_list[i]['FN']
 
-        precise = TP / (TP + FP + 1e-20)
-        recall = TP / (TP + FN + 1e-20)
-        f1_score = 2 * precise * recall / (precise + recall + 1e-20)
+        precise = TP / (TP + FP + 1e-5)
+        recall = TP / (TP + FN + 1e-5)
+        f1_score = 2 * precise * recall / (precise + recall + 1e-5)
         f1_score_list.append(f1_score)
     mean_f1_score = sum(f1_score_list) / len(f1_score_list)
 

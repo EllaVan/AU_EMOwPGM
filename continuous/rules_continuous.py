@@ -3,6 +3,7 @@ sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 import os
 # os.chdir(os.path.dirname(__file__))
 import shutil
+import logging
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,21 +16,27 @@ from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
 from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
 from utils import *
 
-def crop_EMO2AU(conf, priori_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt, loc2, EMO):
+def crop_EMO2AU(conf, priori_update, *args):
     EMO2AU_cpt = priori_update.EMO2AU_cpt.data.detach().cpu().numpy()
     prob_AU = priori_update.prob_AU.data.detach().cpu().numpy()
     EMO2AU_cpt = np.where(EMO2AU_cpt > 0, EMO2AU_cpt, conf.zeroPad)
     EMO2AU_cpt = np.where(EMO2AU_cpt <= 1, EMO2AU_cpt, 1)
     priori_update.EMO2AU_cpt.data.copy_(torch.from_numpy(EMO2AU_cpt))
-    for i, au_i in enumerate(occ_au):
-        for j, au_j in enumerate(occ_au):
-            if i != j:
-                AU_ij_cnt[au_i][au_j] = AU_ij_cnt[au_i][au_j]+1
-                AU_cpt[au_i][au_j] = AU_ij_cnt[au_i][au_j] / AU_cnt[au_j]
-    for i, j in enumerate(loc2):
-        prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (len(EMO))
+    loc1 = priori_update.loc1
+    loc2 = priori_update.loc2
+    for i, j in enumerate(loc1):
+        prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (EMO2AU_cpt.shape[0])
     priori_update.prob_AU.data.copy_(torch.from_numpy(prob_AU))
-    return priori_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt, loc2, EMO\
+    if len(args) != 0:
+        occ_au, AU_ij_cnt, AU_cpt, AU_cnt = args
+        for i, au_i in enumerate(occ_au):
+            for j, au_j in enumerate(occ_au):
+                if i != j:
+                    AU_ij_cnt[au_i][au_j] = AU_ij_cnt[au_i][au_j]+1
+                    AU_cpt[au_i][au_j] = AU_ij_cnt[au_i][au_j] / AU_cnt[au_j]
+        return priori_update, AU_ij_cnt, AU_cpt, AU_cnt
+    else:
+        return priori_update
 
 def final_return(priori_update, EMO, AU, loc1, loc2):
     EMO2AU_cpt = np.zeros((len(EMO), len(AU)))
@@ -44,7 +51,7 @@ def final_return(priori_update, EMO, AU, loc1, loc2):
     prob_AU[loc2] = prob_AU2
     return priori_update, EMO2AU_cpt, prob_AU
 
-def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_writer, init_lr=-1, *args):
+def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_writer, *args):
     device = conf.device
     loc1 = conf.loc1
     loc2 = conf.loc2
@@ -60,17 +67,27 @@ def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_wr
     EMO2AU = EMO2AU_cpt.copy()
     train_size = labelsAU.shape[0]
 
+    init_lr = conf.lr_relation
     if init_lr == -1:
-        init_lr = train_size / (num_all_img + train_size)
+        if train_size > num_all_img:
+            init_lr = num_all_img / (num_all_img + train_size)
+            priori_alpha =  num_all_img / (num_all_img + train_size)
+        else:
+            init_lr = train_size / (num_all_img + train_size)
+            priori_alpha =  1 - train_size / (num_all_img + train_size)
+
+            # init_lr = init_lr * priori_alpha
     if args:
-        change_weight1 = train_size / (num_all_img + train_size)
+        # change_weight1 = train_size / (num_all_img + train_size)
         change_weight2 = 1
         for changing_item in args:
             change_weight2 = change_weight2 * changing_item
-        init_lr = change_weight1 * change_weight2
-
-    priori_alpha =  train_size / (num_all_img + train_size)
-    
+        # init_lr = change_weight1 * change_weight2
+        init_lr = init_lr * change_weight2
+        
+    # init_lr = init_lr * priori_alpha
+    infostr = {'init_lr {}'.format(init_lr)}
+    logging.info(infostr)
     criterion = nn.CrossEntropyLoss()
     acc_record = []
     err_record = []
@@ -84,6 +101,7 @@ def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_wr
     # for p in latest_update.parameters():
     #     p.requires_grad = False
 
+    print('init_lr: ', init_lr)
     for idx in range(labelsAU.shape[0]):
         torch.cuda.empty_cache()
         adjust_rules_lr_v2(optim_graph_priori, init_lr, idx, train_size)
@@ -105,8 +123,7 @@ def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_wr
 
             cur_prob_latest, weight2_latest = latest_update(prob_all_au)
             cur_prob_priori, _ = priori_update(prob_all_au, weight2_latest)
-            # cur_prob = priori_alpha * cur_prob_priori + (1-cur_prob_priori) * cur_prob_latest
-            cur_prob = (1-priori_alpha) * cur_prob_priori + priori_alpha * cur_prob_latest
+            cur_prob = priori_alpha * cur_prob_priori + (1-priori_alpha) * cur_prob_latest
 
             # cur_prob, _ = priori_update(prob_all_au)
 
@@ -125,35 +142,13 @@ def learn_rules(conf, input_info, priori_rules, latest_rules, AU_p_d, summary_wr
             optim_graph_priori.step()
             optim_graph_latest.step()
 
-            # EMO2AU_cpt = priori_update.EMO2AU_cpt.data.detach().cpu().numpy()
-            # prob_AU = priori_update.prob_AU.data.detach().cpu().numpy()
-            # EMO2AU_cpt = np.where(EMO2AU_cpt > 0, EMO2AU_cpt, conf.zeroPad)
-            # EMO2AU_cpt = np.where(EMO2AU_cpt <= 1, EMO2AU_cpt, 1)
-            # priori_update.EMO2AU_cpt.data.copy_(torch.from_numpy(EMO2AU_cpt))
-            # for i, au_i in enumerate(occ_au):
-            #     for j, au_j in enumerate(occ_au):
-            #         if i != j:
-            #             AU_ij_cnt[au_i][au_j] = AU_ij_cnt[au_i][au_j]+1
-            #             AU_cpt[au_i][au_j] = AU_ij_cnt[au_i][au_j] / AU_cnt[au_j]
-            # for i, j in enumerate(loc2):
-            #     prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (len(EMO))
-            # priori_update.prob_AU.data.copy_(torch.from_numpy(prob_AU))
-
-            priori_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt, loc2, EMO = crop_EMO2AU(conf, priori_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt, loc2, EMO)
-            latest_update, _, _, _, _, _, _ = crop_EMO2AU(conf, latest_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt, loc2, EMO)
+            priori_update = crop_EMO2AU(conf, priori_update)
+            latest_update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, latest_update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
 
             del prob_all_au, cur_prob, cur_pred, err, acc
-    
-    # EMO2AU_cpt = np.zeros((len(EMO), len(AU)))
-    # EMO2AU_cpt1 = priori_update.EMO2AU_cpt.data.detach().cpu().numpy()
-    # EMO2AU_cpt2 = priori_update.static_EMO2AU_cpt.data.detach().cpu().numpy()
-    # EMO2AU_cpt[:, loc1] = EMO2AU_cpt1
-    # EMO2AU_cpt[:, loc2] = EMO2AU_cpt2
-    # prob_AU = np.zeros((len(AU),))
-    # prob_AU1 = priori_update.prob_AU.data.detach().cpu().numpy()
-    # prob_AU2 = priori_update.static_prob_AU.data.detach().cpu().numpy()
-    # prob_AU[loc1] = prob_AU1
-    # prob_AU[loc2] = prob_AU2
+
+            # if idx > 20000:
+            #     break
 
     priori_update, _, _ = final_return(priori_update, EMO, AU, loc1, loc2)
     latest_update, EMO2AU_cpt, prob_AU = final_return(latest_update, EMO, AU, loc1, loc2)

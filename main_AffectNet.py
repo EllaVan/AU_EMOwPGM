@@ -186,7 +186,7 @@ def main(conf):
     # net_EMO.load_state_dict(state_dict_EMO)
     # net_EMO = net_EMO.to(device)
 
-    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-4)
+    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-5)
     scheduler_EMO = torch.optim.lr_scheduler.ExponentialLR(optimizer_EMO, gamma=0.9)
     #---------------------------------EMO Setting-----------------------------
 
@@ -276,7 +276,7 @@ if __name__=='__main__':
     conf = parser2dict()
     conf.dataset = 'AffectNet'
 
-    conf.gpu = 3
+    conf.gpu = 1
     # conf.exp_name = 'Test'
 
     conf.learning_rate_AU = 0.0001

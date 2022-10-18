@@ -16,7 +16,7 @@ from models.TwoBranch import GraphAU, EAC
 # from models.TwoBranch_v2 import GraphAU_SSL as GraphAU
 # from models.TwoBranch_v2 import EAC_SSL as EAC
 from models.StableNet.reweighting import weight_learner
-from models.rules_BP4D import *
+from models.rule_model import *
 from losses import *
 from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
@@ -195,7 +195,7 @@ def main(conf):
     # net_EMO.load_state_dict(state_dict_EMO)
     # net_EMO = net_EMO.to(device)
 
-    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-4)
+    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-5)
     scheduler_EMO = torch.optim.lr_scheduler.ExponentialLR(optimizer_EMO, gamma=0.9)
     #---------------------------------EMO Setting-----------------------------
 

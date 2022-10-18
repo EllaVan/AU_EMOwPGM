@@ -16,7 +16,7 @@ from models.TwoBranch import GraphAU, EAC
 # from models.TwoBranch_v2 import GraphAU_SSL as GraphAU
 # from models.TwoBranch_v2 import EAC_SSL as EAC
 from models.StableNet.reweighting import weight_learner
-from models.rules_DISFA import *
+from models.rule_model import *
 from losses import *
 from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
@@ -170,15 +170,16 @@ def main(conf):
     #---------------------------------AU Setting-----------------------------
     logging.info("Fold: [{} | {}  val_data_num: {} ]".format(conf.fold, conf.N_fold, test_len))
     net_AU = GraphAU(conf, num_classes=conf.num_classesAU, neighbor_num=conf.neighbor_num, metric=conf.metric)
-    # net_AU = GraphAU(num_classes=15, neighbor_num=conf.neighbor_num, metric=conf.metric)
+    # net_AU = GraphAU(conf, num_classes=15, neighbor_num=conf.neighbor_num, metric=conf.metric)
 
     if conf.resume != '': # resume
         logging.info("Resume form | {} ]".format(conf.resume))
         net_AU = load_state_dict(net_AU, conf.resume)
+
     # all_info = torch.load(conf.net_params_from_path, map_location='cpu')#['state_dict']
     # state_dict_AU = all_info['state_dict_AU']
     # net_AU.load_state_dict(state_dict_AU)
-    net_AU = net_AU.to(device)
+    # net_AU = net_AU.to(device)
 
     train_weight_AU = torch.from_numpy(train_weight_AU).to(device)
     criterion_AU = WeightedAsymmetricLoss(weight=train_weight_AU)
@@ -192,7 +193,7 @@ def main(conf):
     net_EMO.load_state_dict(state_dict_EMO)
     net_EMO = net_EMO.to(device)
 
-    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-4)
+    optimizer_EMO = torch.optim.Adam(net_EMO.parameters() , lr=conf.learning_rate_EMO, weight_decay=1e-5)
     scheduler_EMO = torch.optim.lr_scheduler.ExponentialLR(optimizer_EMO, gamma=0.9)
     #---------------------------------EMO Setting-----------------------------
 
@@ -278,7 +279,7 @@ if __name__=='__main__':
     conf = parser2dict()
     conf.dataset = 'DISFA'
     
-    conf.gpu = 2
+    conf.gpu = 3
     # conf.exp_name = 'Test'
 
     # conf.epochs = 1

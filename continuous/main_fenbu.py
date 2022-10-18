@@ -1,6 +1,3 @@
-# 持续训练与持续泛化
-# 从BP4D训练训练好的规则开始，逐渐加入RAF、AffectNet、DISFA等数据集，目标是希望在所有的数据上都具备一定的正确规则泛化性
-# 加入的数据应该按照一定的顺序，从和BP4D最相近的开始增加，再到规则不太相似的，这样或许能够保证结果更好的可说明性
 import os,inspect
 import sys
 current_dir = os.path.dirname(__file__)
@@ -22,7 +19,7 @@ from tensorboardX import SummaryWriter
 import argparse
 from easydict import EasyDict as edict
 import yaml
-import scipy
+from itertools import combinations
 
 from conf import ensure_dir, set_logger
 from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
@@ -125,15 +122,48 @@ def get_config(cfg):
     cfg.update(datasets_cfg)
     return cfg
 
+def get_fenbu(input_info, AU_p_d, EMO_p_d):
+    labelsAU, labelsEMO = input_info
+    priori_AU, dataset_AU = AU_p_d
+    priori_EMO, dataset_EMO = EMO_p_d
+    AU_fenbu = [0] * len(priori_AU)
+    interAU_fenbu = np.zeros((len(priori_AU), len(priori_AU)))
+    EMO_fenbu = [0] * len(dataset_EMO)
+    EMO2AU = np.zeros((len(dataset_EMO), len(priori_AU)))
+
+    for idx in range(labelsAU.shape[0]):
+        torch.cuda.empty_cache()
+        cur_item = labelsAU[idx, :].reshape(1, -1).to(device)
+        emo_label = labelsEMO[idx].reshape(1,).to(device)
+        EMO_fenbu[emo_label] = EMO_fenbu[emo_label] + 1
+
+        occ_au = []
+        for priori_au_i, priori_au in enumerate(priori_AU):
+            if priori_au in dataset_AU:
+                pos_priori_in_data = dataset_AU.index(priori_au)
+                if cur_item[0, pos_priori_in_data] == 1:
+                    occ_au.append(priori_au_i)
+                    AU_fenbu[priori_au_i] += 1
+                    EMO2AU[emo_label][priori_au_i] = EMO2AU[emo_label][priori_au_i] + 1
+
+        for i, au_i in enumerate(occ_au):
+            for j, au_j in enumerate(occ_au):
+                if i != j:
+                    interAU_fenbu[au_i][au_j] = interAU_fenbu[au_i][au_j]+1
+
+    fenbu_return  = (np.array(AU_fenbu), interAU_fenbu, np.array(EMO_fenbu), EMO2AU)
+    return fenbu_return
+
 def main(conf):
+    # ensure_dir(conf.outdir, 0)
     pre_path1 = '/media/data1/wf/AU_EMOwPGM/codes/results'
     pre_path2 = 'Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001'
     for_all_test = []
     checkpoint = {}
     checkpoint['dataset_order'] = conf.dataset_order
-    fenbu_info = torch.load(os.path.join('save/fenbu/prob.pth'), map_location='cpu')
     for dataset_i, dataset_name in enumerate(conf.dataset_order):
         torch.cuda.empty_cache()
+        checkpoint[dataset_name] = {}
         pre_path = os.path.join(pre_path1, dataset_name, pre_path2)
         conf.dataset = dataset_name
         conf = get_config(conf)
@@ -149,8 +179,9 @@ def main(conf):
         dataset_AU = train_loader.dataset.AU
         priori_AU = train_loader.dataset.priori['AU']
         AU_p_d = (priori_AU, dataset_AU)
-
         dataset_EMO = train_loader.dataset.EMO
+        priori_EMO = train_loader.dataset.priori['EMO']
+        EMO_p_d = (priori_EMO, dataset_EMO)
         dataset_info = infolist(dataset_EMO, dataset_AU)
 
         all_info = torch.load(info_path, map_location='cpu')#['state_dict']
@@ -158,111 +189,76 @@ def main(conf):
         val_rules_input = (all_info['val_input_info'][info_source[0]], all_info['val_input_info'][info_source[1]])
         for_all_test_tmp = (AU_p_d, val_rules_input, conf.loc1, conf.loc2)
         for_all_test.append(for_all_test_tmp)
-        # conf.lr_relation = 0.005
-        lr_relation_shet = [0.005, 0.0005, 0.00005]
-        # change_w_sheet = [0.1, 0.01] # 0.005
-        # change_w_sheet = [0.00167717, 0.06730331] # 不同数据集EMO分布的协方差
 
-        if dataset_i == 0:
-            # conf.outdir = os.path.join(pre_path, 'continuous_v3')
-            ensure_dir(conf.outdir, 0)
-            set_logger(conf)
-            priori_rules = all_info['input_rules']
-            checkpoint['priori_rules'] = priori_rules
-            latest_rules = torch.load(rules_path, map_location='cpu')['output_rules']
-            # latest_rules = torch.load('save/continuous/2022-10-10_v4/all_done.pth', map_location='cpu')['rules_RAF-DB']
-            checkpoint['based_rules'] = latest_rules
-            num_EMO = len(dataset_EMO)
-            all_confu_m = torch.zeros((num_EMO, num_EMO))
+        train_fenbu_return = get_fenbu(train_rules_input, AU_p_d, EMO_p_d)
+        train_AU_fenbu, train_interAU_fenbu, train_EMO_fenbu, train_EMO2AU = train_fenbu_return
+        val_fenbu_return = get_fenbu(val_rules_input, AU_p_d, EMO_p_d)
+        val_AU_fenbu, val_interAU_fenbu, val_EMO_fenbu, val_EMO2AU = val_fenbu_return
+        all_AU_fenbu = train_AU_fenbu + val_AU_fenbu
+        all_interAU_fenbu = train_interAU_fenbu + val_interAU_fenbu
+        all_EMO_fenbu = train_EMO_fenbu + val_EMO_fenbu
+        all_EMO2AU = train_EMO2AU + val_EMO2AU
+        all_fenbu_return = (all_AU_fenbu, all_interAU_fenbu, all_EMO_fenbu, all_EMO2AU)
+        checkpoint[dataset_name]['train_fenbu_return'] = train_fenbu_return
+        checkpoint[dataset_name]['val_fenbu_return'] = val_fenbu_return
+        checkpoint[dataset_name]['all_fenbu_return'] = all_fenbu_return
+        print('{} done'.format(dataset_name))
+    save_path = os.path.join(conf.outdir, 'count.pth')
+    torch.save(checkpoint, save_path)
+    print('Get fenbu (count) done')
 
-            infostr = {'The priori Dataset {}: The training length is {}, The test length is {}'.format(dataset_name, train_len, test_len)}
-            logging.info(infostr)
+    parts = ['train_fenbu_return', 'val_fenbu_return', 'all_fenbu_return']
+    fenbu_file = torch.load('save/fenbu/count.pth', map_location='cpu')
+    checkpoint = {}
+    for dataset_i, dataset_name in enumerate(conf.dataset_order):
+        checkpoint[dataset_name] = {}
+        fenbu_data = fenbu_file[dataset_name]
+        for part in parts:
+            checkpoint[dataset_name][part] = {}
+            AU_fenbu, interAU_fenbu, EMO_fenbu, EMO2AU_fenbu = fenbu_data[part]
+            prob_AU = []
+            AU_cpt = np.zeros_like(interAU_fenbu)
+            img_num = sum(EMO_fenbu)
 
-            latest_AU_fenbu = fenbu_info[dataset_name]['train_fenbu_return']['AU_fenbu']
-            latest_EMO_fenbu = fenbu_info[dataset_name]['train_fenbu_return']['EMO_fenbu']
-        else:
-            cur_outdir = os.path.join(conf.outdir, dataset_name)
-            ensure_dir(cur_outdir, 0)
-            summary_writer = SummaryWriter(cur_outdir)
-            num_EMO = len(dataset_EMO)
-            all_confu_m = torch.zeros((num_EMO, num_EMO))
-            
-            infostr = {'Dataset {}: The training length is {}, The test length is {}'.format(dataset_name, train_len, test_len)}
-            logging.info(infostr)
+            for AU_i in range(len(AU_fenbu)):
+                prob_AU.append(AU_fenbu[AU_i] / img_num)
+                AU_cpt[:, AU_i] = interAU_fenbu[:, AU_i] / AU_fenbu[AU_i]
+            EMO_cpt = [emo_num / img_num for emo_num in EMO_fenbu]
 
-            new_AU_fenbu = fenbu_info[dataset_name]['train_fenbu_return']['AU_fenbu']
-            new_EMO_fenbu = fenbu_info[dataset_name]['train_fenbu_return']['EMO_fenbu']
+            EMO2AU_cpt = np.zeros_like(EMO2AU_fenbu)
+            for EMO_i in range(len(EMO_fenbu)):
+                EMO2AU_cpt[EMO_i, :] = EMO2AU_fenbu[EMO_i, :] / EMO_fenbu[EMO_i]
 
-        if dataset_i > 0:
-            # conf.lr_relation = lr_relation_shet[dataset_i - 1]
+            checkpoint[dataset_name][part]['EMO_cpt'] = EMO_cpt
+            checkpoint[dataset_name][part]['EMO_fenbu'] = EMO_fenbu
+            checkpoint[dataset_name][part]['EMO2AU_fenbu'] = EMO2AU_fenbu
+            checkpoint[dataset_name][part]['EMO2AU_cpt'] = EMO2AU_cpt
+            checkpoint[dataset_name][part]['prob_AU'] = prob_AU[:-2]
+            checkpoint[dataset_name][part]['AU_fenbu'] = AU_fenbu[:-2]
+            checkpoint[dataset_name][part]['AU_cpt'] = AU_cpt[:-2, :-2]
+            checkpoint[dataset_name][part]['interAU_fenbu'] = interAU_fenbu[:-2, :-2]
 
-            latest_AU_fenbu = latest_AU_fenbu + new_AU_fenbu
-            latest_EMO_fenbu = latest_EMO_fenbu + new_EMO_fenbu
-            latest_AU_dis = latest_AU_fenbu / sum(latest_AU_fenbu)
-            new_AU_dis = new_AU_fenbu / sum(new_AU_fenbu)
-            latest_EMO_dis = latest_EMO_fenbu / sum(latest_EMO_fenbu)
-            new_EMO_dis = new_EMO_fenbu / sum(new_EMO_fenbu)
-            KL_AU = scipy.stats.entropy(latest_AU_dis, new_AU_dis)
-            KL_EMO = scipy.stats.entropy(latest_EMO_dis, new_EMO_dis)
-            change_w = KL_AU * KL_EMO
-            # if conf.dataset_order[0] == 'BP4D':
-            #     change_w = KL_AU * KL_EMO
-            # else:
-            #     change_w = KL_AU
+    torch.save(checkpoint, os.path.join(conf.outdir, 'prob.pth'))
+    print('Get fenbu_prob done')
 
-            conf.lr_relation = -1
-            output_rules, train_records, model = learn_rules(conf, train_rules_input, priori_rules, latest_rules, AU_p_d, summary_writer, change_w, 0.23) # change_w_sheet[dataset_i - 1]
-            train_rules_loss, train_rules_acc, train_confu_m = train_records
-            checkpoint['train_'+dataset_name] = train_records
-            checkpoint['rules_'+dataset_name] = output_rules
-            model = UpdateGraph(conf, output_rules, conf.loc1, conf.loc2).to(device)
-            test_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
-            val_rules_loss, val_rules_acc, val_confu_m = test_records
-            val_confu_m_copy = val_confu_m.clone()
-            checkpoint['test_'+dataset_name] = test_records
+    end_flag = 1
 
-            infostr_rules = {'ContiDataOrder {} train_rules_loss: {:.5f}, train_rules_acc: {:.2f}, val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'
-                                    .format(dataset_i, train_rules_loss, 100.* train_rules_acc, val_rules_loss, 100.* val_rules_acc)}
-            logging.info(infostr_rules)
-            
-            infostr_EMO = {'EMO Rules Val Acc-list:'}
-            logging.info(infostr_EMO)
-            for i in range(val_confu_m.shape[0]):
-                val_confu_m[:, i] = val_confu_m[:, i] / val_confu_m[:, i].sum(axis=0)
-            infostr_EMO = dataset_info.info_EMO(torch.diag(val_confu_m).cpu().numpy().tolist())
-            logging.info(infostr_EMO)
+def read_fenbu(conf): # AU_fenbu, interAU_fenbu, EMO_fenbu
+    info = torch.load(os.path.join(conf.outdir, 'prob.pth'), map_location='cpu')
+    zuhe = list(combinations(conf.dataset_order, 2))
+    checkpoint = {}
+    for dataset1, dataset2 in zuhe:
+        a = info[dataset1]['train_fenbu_return']['EMO2AU_cpt']
+        b = info[dataset2]['train_fenbu_return']['EMO2AU_cpt']
+        cov_list = []
+        for i in range(a.shape[0]):
+            c = a[i, :]
+            d = b[i, :]
+            cov_list.append(np.cov(c, d)[0, 1])
+        checkpoint[dataset1+'_'+dataset2] = np.array(cov_list).reshape(-1, )
+    torch.save(checkpoint, os.path.join(conf.outdir, 'cov_EMO2AU.pth'))
+    end_flag = 1
 
-            latest_rules = output_rules
-
-        if dataset_i >= 1:
-            all_confu_m = val_confu_m_copy
-            for cur_i, (AU_p_d, val_rules_input, loc1, loc2) in enumerate(for_all_test[:-1]):
-                cur_allto_dataset = conf.dataset_order[cur_i]
-                temp_summary_path = os.path.join(cur_outdir, 'all_test', cur_allto_dataset)
-                ensure_dir(temp_summary_path, 0)
-                model = UpdateGraph(conf, latest_rules, loc1, loc2).to(device)
-                temp_summary_writer = SummaryWriter(temp_summary_path)
-                all_test_records = test_rules(conf, model, device, val_rules_input, latest_rules, AU_p_d, temp_summary_writer, all_confu_m)
-                all_rules_loss, all_rules_acc, all_confu_m = all_test_records
-                infostr_rules = {'The fine-tuned rules val acc on {} is {:.2f}' .format(cur_allto_dataset, 100*all_rules_acc)}
-                logging.info(infostr_rules)
-                
-            all_testEMO_list = torch.diag(all_confu_m).cpu().numpy().tolist()
-            all_rules_acc = sum(all_testEMO_list) / torch.sum(all_confu_m)
-            infostr_rules = {'AllTestToOrder {} all_rules_acc: {:.2f}' .format(dataset_i, 100*all_rules_acc)}
-            logging.info(infostr_rules)
-            infostr_EMO = {'AllTestEMO Rules Val Acc-list:'}
-            logging.info(infostr_EMO)
-            for i in range(all_confu_m.shape[0]):
-                all_confu_m[:, i] = all_confu_m[:, i] / all_confu_m[:, i].sum(axis=0)
-            infostr_EMO = dataset_info.info_EMO(torch.diag(all_confu_m).cpu().numpy().tolist())
-            logging.info(infostr_EMO)
-
-            all_test_records = all_rules_loss, all_rules_acc, all_confu_m
-            checkpoint['all_test_to_'+dataset_name] = all_test_records
-                
-    torch.save(checkpoint, os.path.join(conf.outdir, 'all_done.pth'))
-    a = 1
 
 def plot_viz():
     info_path = '/media/data1/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/continuous/all_done.pth'
@@ -273,36 +269,23 @@ def plot_viz():
     plot_confusion_matrix(cm.detach().cpu().numpy(), EMO, normalize=False, title='Confusion matrix', cmap=plt.cm.Blues, save_path=save_path)
     a = 1
 
-def read():
-    path = '/media/data1/wf/AU_EMOwPGM/codes/continuous/save/continuous/2022-10-14/all_done.pth'
-    info = torch.load(path, map_location='cpu')
-    a = 1
-
 if __name__=='__main__':
-    
     conf = parser2dict()
+
     cur_time = datetime.datetime.now(pytz.timezone('Asia/Shanghai'))
     print(cur_time)
     # cur_day = str(cur_time).split('.')[0].replace(' ', '_')
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.dataset_order = ['RAF-DB', 'BP4D', 'AffectNet']
-    if conf.dataset_order[0] == 'BP4D':
-        prefix = 'BRA'
-        conf.gpu = 2
-    else:
-        prefix = 'RBA'
-        conf.gpu = 3
-    conf.outdir = os.path.join(conf.save_path, 'continuous', cur_day, 'v3', prefix)
+    conf.outdir = os.path.join(conf.save_path, 'fenbu')
 
     global device
+    conf.gpu = 2
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)
-    main(conf)
-    # plot_viz()
-    # tmp()
-    
-    # read()
+    # main(conf)
+    read_fenbu(conf)
+    plot_viz()
     a = 1
