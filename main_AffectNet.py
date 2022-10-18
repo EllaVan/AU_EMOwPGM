@@ -13,7 +13,7 @@ import time
 from tensorboardX import SummaryWriter
 
 from models.TwoBranch import GraphAU, EAC
-from models.rules_BP4D import *
+from models.rule_model import *
 from losses import *
 from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
@@ -194,8 +194,11 @@ def main(conf):
     EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = tuple(train_loader.dataset.priori.values())
     ori_size = np.sum(np.array(EMO_img_num))
     num_all_img = ori_size
-    AU_ij_cnt = AU_cpt * ori_size
     AU_cnt = prob_AU * ori_size
+    # AU_ij_cnt = AU_cpt * ori_size
+    AU_ij_cnt = np.zeros_like(AU_cpt)
+    for au_ij in range(AU_cpt.shape[0]):
+        AU_ij_cnt[:, au_ij] = AU_cpt[:, au_ij] * AU_cnt[au_ij]
     input_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
     dataset_AU = train_loader.dataset.AU
     priori_AU = train_loader.dataset.priori['AU']

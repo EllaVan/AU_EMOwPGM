@@ -36,7 +36,7 @@ parser.add_argument('--seed', default=0, type=int, help='seeding for all random 
 
 # GraphAU setting
 parser.add_argument('-lr_AU', '--learning-rate_AU', default=0.0001, type=float, metavar='LR', help='initial learning rate for AU')
-parser.add_argument('--weight-decay', '-wd', default=5e-4, type=float, metavar='W', help='weight decay (default: 1e-4)')
+parser.add_argument('--weight-decay', '-wd', default=5e-4, type=float, metavar='W', help='weight decay (default: 1e-5)')
 parser.add_argument('--optimizer-eps', default=1e-8, type=float)
 parser.add_argument('--crop-size', default=224, type=int, help="crop size of train/test image data")
 parser.add_argument('--evaluate', action='store_true', help='evaluation mode')
@@ -55,7 +55,7 @@ parser.add_argument('--lam_EMO', type=float, default=5, help='kl_lambda')
 parser.add_argument('--lr_relation', type=float, default=0.001)
 parser.add_argument('--lr_decay_idx', type=int, default=20000)
 parser.add_argument('--AUthresh', type=float, default=0.6)
-parser.add_argument('--zeroPad', type=float, default=1e-4)
+parser.add_argument('--zeroPad', type=float, default=1e-5)
 
 #SSL
 parser.add_argument('--SSL_temperature', type=float, default=0.5)
@@ -243,7 +243,7 @@ def set_env(cfg):
 
 
 def set_outdir(conf):
-    default_outdir = 'results'
+    default_outdir = 'results2'
     if 'timedir' in conf:
         timestr = datetime.now().strftime('%d-%m-%Y_%I_%M-%S_%p')
         outdir = os.path.join(default_outdir,conf.exp_name,timestr)
@@ -262,7 +262,7 @@ def set_outdir(conf):
 
 
 # check if dir exist, if not create new folder
-def ensure_dir(dir_name, start_epoch):
+def ensure_dir(dir_name, start_epoch=0):
     if start_epoch == 0:
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
@@ -292,16 +292,16 @@ def set_logger(cfg):
     logger = logging.getLogger()
     logger.setLevel(loglevel)
 
-    if not logger.handlers:
-        # Logging to a file
-        file_handler = logging.FileHandler(log_path)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
-        logger.addHandler(file_handler)
+    # if not logger.handlers:
+    # Logging to a file
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+    logger.addHandler(file_handler)
 
-        # Logging to console
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(logging.Formatter('%(message)s'))
-        logger.addHandler(stream_handler)
+    # Logging to console
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(stream_handler)
 
     logging.info(print_conf(cfg))
     logging.info('writting logs to file {}'.format(log_path))

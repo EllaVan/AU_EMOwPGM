@@ -50,6 +50,12 @@ def RadiateAUs_v2(conf, emo_label, AU_cpt, occAU, loc2, EMO2AU, prob_occAU=None,
     prob_all_au = prob_occAU1.copy()
     prob_all_au[occAU, :] = prob_occAU
     prob_all_au = static_op(conf, emo_label, prob_all_au, loc2, EMO2AU)
+
+    # if emo_label == 2:
+    #     if random.random() <= 0.33:
+    #         prob_all_au[-1] = 1
+    #     else:
+    #         prob_all_au[-1] = 0
     
     return prob_all_au
 

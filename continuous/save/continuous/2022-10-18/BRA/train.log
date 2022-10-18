@@ -1,0 +1,48 @@
+2022-10-18 16:09:04,173:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+                  dataset: BP4D                          
+            dataset_order: ['BP4D', 'RAF-DB', 'AffectNet']
+             dataset_path: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+dataset_path_subject_dependent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_dependent.pkl
+dataset_path_subject_independent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+                   device: cuda:2                        
+                 evaluate: False                         
+                file_list: epoch4_model_fold0.pth        
+                     fold: 0                             
+                      gpu: 2                             
+                     loc1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                     loc2: [15, 16]                      
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+             neighbor_num: 4                             
+              num_classes: 17                            
+              num_workers: 16                            
+                   outdir: save/continuous/2022-10-18/BRA
+             priori_alpha: 0.5                           
+                save_path: save                          
+              source_list: ['labelsAU_record', 'labelsEMO_record']
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-10-18 16:09:04,174:INFO: writting logs to file save/continuous/2022-10-18/BRA/train.log
+2022-10-18 16:09:04,175:INFO: {'The priori Dataset BP4D: The training length is 72861, The test length is 31383'}
+2022-10-18 16:09:04,307:INFO: {'Dataset RAF-DB: The training length is 9747, The test length is 2388'}
+2022-10-18 16:09:05,347:INFO: {'init_lr 0.0007490010810034882'}
+2022-10-18 16:11:19,430:INFO: {'ContiDataOrder 1 train_rules_loss: 1.60810, train_rules_acc: 37.76, val_rules_loss: 1.31319, val_rules_acc: 72.96'}
+2022-10-18 16:11:19,431:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 16:11:19,431:INFO: {'happy: 99.75, sad: 37.45, fear: 58.11, anger: 41.36, surprise: 67.07, disgust: 31.01'}
+2022-10-18 16:13:53,897:INFO: {'The fine-tuned rules val acc on BP4D is 76.47'}
+2022-10-18 16:13:53,898:INFO: {'AllTestToOrder 1 all_rules_acc: 76.20'}
+2022-10-18 16:13:53,898:INFO: {'AllTestEMO Rules Val Acc-list:'}
+2022-10-18 16:13:53,899:INFO: {'happy: 99.91, sad: 80.86, fear: 77.80, anger: 74.36, surprise: 53.55, disgust: 43.08'}
+2022-10-18 16:13:54,245:INFO: {'Dataset AffectNet: The training length is 209028, The test length is 3000'}
+2022-10-18 16:13:54,246:INFO: {'init_lr 3.5783719245782323e-06'}
+2022-10-18 17:39:38,024:INFO: {'ContiDataOrder 2 train_rules_loss: 1.23938, train_rules_acc: 80.75, val_rules_loss: 1.50845, val_rules_acc: 52.23'}
+2022-10-18 17:39:38,024:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 17:39:38,025:INFO: {'happy: 99.19, sad: 56.75, fear: 28.12, anger: 33.05, surprise: 71.28, disgust: 24.07'}
+2022-10-18 17:42:21,037:INFO: {'The fine-tuned rules val acc on BP4D is 72.41'}
+2022-10-18 17:42:29,614:INFO: {'The fine-tuned rules val acc on RAF-DB is 76.02'}
+2022-10-18 17:42:29,615:INFO: {'AllTestToOrder 2 all_rules_acc: 70.93'}
+2022-10-18 17:42:29,616:INFO: {'AllTestEMO Rules Val Acc-list:'}
+2022-10-18 17:42:29,616:INFO: {'happy: 99.86, sad: 75.54, fear: 65.21, anger: 73.42, surprise: 57.80, disgust: 28.35'}

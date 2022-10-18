@@ -169,7 +169,17 @@ def main(conf):
             ensure_dir(conf.outdir, 0)
             summary_writer = SummaryWriter(conf.outdir)
             set_logger(conf)
-            priori_rules = all_info['input_rules']
+            # priori_rules = all_info['input_rules']
+
+            EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = tuple(train_loader.dataset.priori.values())
+            ori_size = np.sum(np.array(EMO_img_num))
+            num_all_img = ori_size
+            AU_cnt = prob_AU * ori_size
+            AU_ij_cnt = np.zeros_like(AU_cpt)
+            for au_ij in range(AU_cpt.shape[0]):
+                AU_ij_cnt[:, au_ij] = AU_cpt[:, au_ij] * AU_cnt[au_ij]
+            priori_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
+
             checkpoint['priori_rules'] = priori_rules
             num_EMO = len(dataset_EMO)
             all_confu_m = torch.zeros((num_EMO, num_EMO))
@@ -273,7 +283,7 @@ def eval_each(conf, rule_path=None):
 
         val_records = test_rules(conf, model, device, val_rules_input, rules, AU_p_d, summary_writer)
         val_rules_loss, val_rules_acc, val_confu_m = val_records
-        infostr_rules = {'val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'.format(val_rules_loss, 100.* val_rules_acc)}
+        infostr_rules = {'Dataset {}: val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'.format(dataset_name, val_rules_loss, 100.* val_rules_acc)}
         logging.info(infostr_rules)
         infostr_EMO = {'EMO Rules Val Acc-list:'}
         logging.info(infostr_EMO)
@@ -291,10 +301,10 @@ if __name__=='__main__':
     print(cur_time)
     # cur_day = str(cur_time).split('.')[0].replace(' ', '_')
     cur_day = str(cur_time).split(' ')[0]
-    conf.outdir = os.path.join(conf.save_path, cur_day, 'LR_compu_loc')
+    conf.outdir = os.path.join(conf.save_path, cur_day)
 
     global device
-    conf.gpu = 3
+    conf.gpu = 0
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)

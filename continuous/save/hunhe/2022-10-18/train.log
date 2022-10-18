@@ -1,0 +1,45 @@
+2022-10-18 16:07:18,282:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+                 change_w: None                          
+                  dataset: BP4D                          
+            dataset_order: ['BP4D', 'RAF-DB', 'AffectNet']
+             dataset_path: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+dataset_path_subject_dependent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_dependent.pkl
+dataset_path_subject_independent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+                   device: cuda:0                        
+                 evaluate: False                         
+                file_list: epoch4_model_fold0.pth        
+                     fold: 0                             
+                      gpu: 0                             
+                     loc1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                     loc2: [15, 16]                      
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+             neighbor_num: 4                             
+              num_classes: 17                            
+              num_workers: 16                            
+                   outdir: save/hunhe/2022-10-18         
+             priori_alpha: 0.5                           
+                save_path: save/hunhe                    
+              source_list: ['labelsAU_record', 'labelsEMO_record']
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-10-18 16:07:18,282:INFO: writting logs to file save/hunhe/2022-10-18/train.log
+2022-10-18 16:07:18,282:INFO: {'Dataset BP4D: The training length is 72861, The test length is 31383'}
+2022-10-18 16:07:18,405:INFO: {'Dataset RAF-DB: The training length is 9747, The test length is 2388'}
+2022-10-18 16:07:18,706:INFO: {'Dataset AffectNet: The training length is 209028, The test length is 3000'}
+2022-10-18 16:07:23,603:INFO: {'init_lr 0.004710138744304316'}
+2022-10-18 18:09:04,873:INFO: {'train_rules_loss: 1.24723, train_rules_acc: 79.51, val_rules_loss: 1.35655, val_rules_acc: 69.01'}
+2022-10-18 18:09:04,874:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 18:09:04,875:INFO: {'happy: 100.00, sad: 69.28, fear: 63.14, anger: 78.10, surprise: 65.96, disgust: 10.08'}
+2022-10-18 18:11:36,472:INFO: {'val_rules_loss: 1.34860, val_rules_acc: 70.05'}
+2022-10-18 18:11:36,472:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 18:11:36,473:INFO: {'happy: 100.00, sad: 73.33, fear: 66.78, anger: 80.57, surprise: 60.66, disgust: 10.96'}
+2022-10-18 18:11:45,008:INFO: {'val_rules_loss: 1.27216, val_rules_acc: 76.98'}
+2022-10-18 18:11:45,008:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 18:11:45,009:INFO: {'happy: 100.00, sad: 46.03, fear: 39.19, anger: 74.07, surprise: 84.45, disgust: 3.16'}
+2022-10-18 18:11:55,088:INFO: {'val_rules_loss: 1.50396, val_rules_acc: 52.16'}
+2022-10-18 18:11:55,089:INFO: {'EMO Rules Val Acc-list:'}
+2022-10-18 18:11:55,089:INFO: {'happy: 100.00, sad: 50.63, fear: 21.46, anger: 50.42, surprise: 83.47, disgust: 6.17'}

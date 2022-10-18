@@ -128,6 +128,7 @@ def get_config(cfg):
 def main(conf):
     pre_path1 = '/media/data1/wf/AU_EMOwPGM/codes/results'
     pre_path2 = 'Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001'
+    rule_path1 = '/media/data1/wf/AU_EMOwPGM/codes/save'
     for_all_test = []
     checkpoint = {}
     checkpoint['dataset_order'] = conf.dataset_order
@@ -143,7 +144,8 @@ def main(conf):
 
         info_path = os.path.join(pre_path, cur_path)
         info_source_path = info_source[0].split('_')[0] + '_' + info_source[1].split('_')[0]
-        rules_path = os.path.join(pre_path, info_source_path, cur_path)
+        # rules_path = os.path.join(pre_path, info_source_path, cur_path)
+        rules_path = os.path.join(rule_path1, dataset_name, info_source_path, cur_path)
         
         train_loader, test_loader, train_len, test_len = getDatasetInfo(conf)
         dataset_AU = train_loader.dataset.AU
@@ -167,7 +169,17 @@ def main(conf):
             # conf.outdir = os.path.join(pre_path, 'continuous_v3')
             ensure_dir(conf.outdir, 0)
             set_logger(conf)
-            priori_rules = all_info['input_rules']
+            # priori_rules = all_info['input_rules']
+
+            EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = tuple(train_loader.dataset.priori.values())
+            ori_size = np.sum(np.array(EMO_img_num))
+            num_all_img = ori_size
+            AU_cnt = prob_AU * ori_size
+            AU_ij_cnt = np.zeros_like(AU_cpt)
+            for au_ij in range(AU_cpt.shape[0]):
+                AU_ij_cnt[:, au_ij] = AU_cpt[:, au_ij] * AU_cnt[au_ij]
+            priori_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
+
             checkpoint['priori_rules'] = priori_rules
             latest_rules = torch.load(rules_path, map_location='cpu')['output_rules']
             # latest_rules = torch.load('save/continuous/2022-10-10_v4/all_done.pth', map_location='cpu')['rules_RAF-DB']
@@ -294,7 +306,7 @@ if __name__=='__main__':
     else:
         prefix = 'RBA'
         conf.gpu = 3
-    conf.outdir = os.path.join(conf.save_path, 'continuous', cur_day, 'v3', prefix)
+    conf.outdir = os.path.join(conf.save_path, 'continuous', cur_day, prefix)
 
     global device
     device = torch.device('cuda:{}'.format(conf.gpu))
