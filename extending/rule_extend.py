@@ -342,7 +342,7 @@ def learn_rules_KL(conf, device, input_info, input_rules, seen_trained_rules, AU
     update.train()
     for idx in range(labelsAU.shape[0]):
         torch.cuda.empty_cache()
-        # adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
+        adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
         cur_item = labelsAU[idx, :].reshape(1, -1).to(device)
         emo_label = labelsEMO[idx].reshape(1,).to(device)
 
@@ -360,7 +360,7 @@ def learn_rules_KL(conf, device, input_info, input_rules, seen_trained_rules, AU
 
             optim_graph.zero_grad()
             
-            pre_train_idx = 2000
+            pre_train_idx = 0.66*len(labelsEMO)
             if idx <= pre_train_idx:
                 cur_prob, cur_temp_prob, _, _, _ = update(prob_all_au, is_pre_train=True)#, phase='train')
                 cur_pred = torch.argmax(cur_prob)
@@ -402,7 +402,7 @@ def learn_rules_KL(conf, device, input_info, input_rules, seen_trained_rules, AU
 
         # if idx > 10000:
             # 下面一直到return 都tab了两次       
-    # update, EMO2AU_cpt, prob_AU = final_return(update, EMO, AU, loc1, loc2)
+    update, EMO2AU_cpt, prob_AU = final_return(update, EMO, AU, loc1, loc2)
 
     if len(err_record) == 0:
         output_records = (0, 0, 0)

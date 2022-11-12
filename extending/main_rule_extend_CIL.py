@@ -112,7 +112,7 @@ def main(conf):
         # unseen_EMO = ['fear', 'disgust']
         # unseen_info = infolist(unseen_EMO, dataset_AU)
 
-        conf.lr_relation = 1e-2
+        conf.lr_relation = 1e-3
         output_rules, train_records, model = learn_rules(conf, device, train_rules_input, input_rules, seen_trained_rules, AU_p_d, summary_writer)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         
@@ -155,7 +155,7 @@ if __name__=='__main__':
     conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day)
 
     global device
-    conf.gpu = 0
+    conf.gpu = 2
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)
