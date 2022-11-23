@@ -6,33 +6,30 @@ need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models')]
 sys.path = need_path + sys.path
 os.chdir(current_dir)
 
-import os
-from re import A, M
 import logging
 import shutil
+import argparse
+from easydict import EasyDict as edict
+import yaml
+from itertools import combinations
+import datetime
+import pytz
+
+import matplotlib.pyplot as plt
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
-import argparse
-from easydict import EasyDict as edict
-import yaml
-from itertools import combinations
-
 from conf import ensure_dir, set_logger
 from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
 from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
-
-from rules_continuous import learn_rules, test_rules
+from model_continuous.rules_continuous import learn_rules, test_rules
 from losses import *
 from utils import *
 
-import matplotlib.pyplot as plt
-
-import datetime
-import pytz
 
 def parser2dict():
     parser = argparse.ArgumentParser()
@@ -287,5 +284,5 @@ if __name__=='__main__':
     torch.cuda.set_device(conf.gpu)
     # main(conf)
     read_fenbu(conf)
-    plot_viz()
+    # plot_viz()
     a = 1

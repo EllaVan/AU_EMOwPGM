@@ -36,7 +36,7 @@ def parser2dict():
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--dataset_order', type=str, default=['BP4D', 'DISFA', 'RAF-DB', 'AffectNet'])
-    parser.add_argument('--outdir', type=str, default='save/seen')
+    parser.add_argument('--outdir', type=str, default='save/seen/balanced')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -125,14 +125,14 @@ def main(conf):
         input_rules = all_info['val_input_info']['seen_priori_rules']
         
         summary_writer = SummaryWriter(cur_outdir)
-        conf.lr_relation = 0.001
-        output_rules, train_records, model = learn_rules(conf, device, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
+        conf.lr_relation = 1e-4
+        output_rules, train_records, model = learn_rules(conf, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         train_info = {}
         train_info['rules_loss'] = train_rules_loss
         train_info['rules_acc'] = train_rules_acc
         train_info['train_confu_m'] = train_confu_m
-        val_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
+        val_records = test_rules(conf, model, val_rules_input, output_rules, AU_p_d, summary_writer)
         val_rules_loss, val_rules_acc, val_confu_m = val_records
         val_info = {}
         val_info['rules_loss'] = val_rules_loss
@@ -172,7 +172,7 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.outdir = os.path.join(conf.outdir, cur_day+'_v2')
+    conf.outdir = os.path.join(conf.outdir, cur_day)
 
     global device
     conf.gpu = 1

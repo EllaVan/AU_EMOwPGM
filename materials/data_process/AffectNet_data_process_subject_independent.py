@@ -61,10 +61,11 @@ for phase, label_usage in phases:
 	
 	usage_column = 2
 	df_temp = []
+	a = []
 	for data_node_i, data_node in enumerate(data_nodes[1:]):
-		dfi = df[df[LABEL_COLUMN] == data_node_i]
+		dfi = df[df[LABEL_COLUMN] == data_node_i+1]
 		df_temp.append(dfi)
-
+		a.append(len(dfi))
 	file_names = []
 	labelsEMO = []
 	EMO_weights = []

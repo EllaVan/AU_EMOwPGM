@@ -122,30 +122,35 @@ class UpdateGraph_v2(nn.Module):
         for i in range(weight1.shape[0]):
             prob_emo = torch.prod(weight1[i, :]) * torch.prod(weight2[i, :])
             a.append(prob_emo.reshape(1, -1))
-        out1 = torch.cat(a).reshape(-1, weight1.shape[0])
-        out2 = F.normalize(out1, p = 1, dim=1)
+        self.out1 = torch.cat(a).reshape(-1, weight1.shape[0])
+        out2 = F.normalize(self.out1, p = 1, dim=1)
 
         return out2
 
 class UpdateGraph_continuous(nn.Module):
-    def __init__(self, conf, input_rules, loc1, loc2):
+    def __init__(self, conf, input_rules):
         super(UpdateGraph_continuous, self).__init__()
         self.conf = conf
-        self.loc1 = loc1
-        self.loc2 = loc2
+        self.loc1 = conf.loc1
+        self.loc2 = conf.loc2
 
         self.input_rules = input_rules
         EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = input_rules
 
-        self.register_buffer('prob_AU', torch.from_numpy(prob_AU[loc1]))
-        self.register_buffer('static_prob_AU', torch.from_numpy(prob_AU[loc2]))
+        prob_AU = torch.from_numpy(prob_AU)
+        prob_AU = np.where(prob_AU > 0, prob_AU, conf.zeroPad)
+        self.register_buffer('prob_AU', torch.from_numpy(prob_AU[self.loc1]))
+        self.register_buffer('static_prob_AU', torch.from_numpy(prob_AU[self.loc2]))
 
         EMO2AU_cpt = np.where(EMO2AU_cpt > 0, EMO2AU_cpt, conf.zeroPad)
-        self.EMO2AU_cpt = Parameter(Variable(torch.from_numpy(EMO2AU_cpt[:, loc1])))
+        self.EMO2AU_cpt = Parameter(Variable(torch.from_numpy(EMO2AU_cpt[:, self.loc1])))
         self.EMO2AU_cpt.requires_grad = True
 
-        self.register_buffer('static_EMO2AU_cpt', torch.from_numpy(EMO2AU_cpt[:, loc2]))
-        self.register_buffer('neg_static_EMO2AU_cpt', torch.from_numpy(1 - EMO2AU_cpt[:, loc2]))
+        neg_EMO2AU_cpt = 1 - EMO2AU_cpt
+        neg_EMO2AU_cpt = np.where(neg_EMO2AU_cpt > 0, neg_EMO2AU_cpt, conf.zeroPad)
+
+        self.register_buffer('static_EMO2AU_cpt', torch.from_numpy(EMO2AU_cpt[:, self.loc2]))
+        self.register_buffer('neg_static_EMO2AU_cpt', torch.from_numpy(neg_EMO2AU_cpt[:, self.loc2])) # 1 - EMO2AU_cpt[:, self.loc2]
 
         self.AU_cpt = AU_cpt
         self.num_all_img = num_all_img
@@ -170,8 +175,11 @@ class UpdateGraph_continuous(nn.Module):
         loc2 = self.loc2
         conf = self.conf
         
+        prob_all_au = np.where(prob_all_au > 0, prob_all_au, conf.zeroPad)
+        
         self.neg_EMO2AU_cpt = 1 - self.EMO2AU_cpt
         self.neg_EMO2AU_cpt = torch.where(self.neg_EMO2AU_cpt > 0, self.neg_EMO2AU_cpt, conf.zeroPad)
+        self.neg_EMO2AU_cpt = torch.where(self.neg_EMO2AU_cpt <= 1, self.neg_EMO2AU_cpt, 1)
         self.prob_all_au = torch.from_numpy(prob_all_au[loc1, :]).cuda()
         self.static_prob_all_au = torch.from_numpy(prob_all_au[loc2, :]).cuda()
 
@@ -193,8 +201,8 @@ class UpdateGraph_continuous(nn.Module):
         for i in range(weight1.shape[0]):
             prob_emo = torch.prod(weight1[i, :]) * torch.prod(self.weight2[i, :])
             a.append(prob_emo.reshape(1, -1))
-        out1 = torch.cat(a).reshape(-1, weight1.shape[0])
-        self.out2 = F.normalize(out1, p = 1, dim=1)
+        self.out1 = torch.cat(a).reshape(-1, weight1.shape[0])
+        self.out2 = F.normalize(self.out1, p = 1, dim=1)
 
         return self.out2, self.weight2
 

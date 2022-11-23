@@ -1,7 +1,7 @@
-# 持续训练与持续泛化
-# 从BP4D训练训练好的规则开始，逐渐加入RAF、AffectNet、DISFA等数据集，目标是希望在所有的数据上都具备一定的正确规则泛化性
-# 加入的数据应该按照一定的顺序，从和BP4D最相近的开始增加，再到规则不太相似的，这样或许能够保证结果更好的可说明性
-import os,inspect
+'''
+把BP4D、RAF-DB、AffectNet三个数据集混合在一起形成一个更大的数据集, 然后用普通的方法训练。这样得到的结果一般被认为是持续学习（域增量学习）的上界
+'''
+import os
 import sys
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
@@ -9,33 +9,26 @@ need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models')]
 sys.path = need_path + sys.path
 os.chdir(current_dir)
 
-import os
-from re import A, M
 import logging
 import shutil
+import argparse
+from easydict import EasyDict as edict
+import yaml
+import datetime
+import pytz
+
+import matplotlib.pyplot as plt
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
-import argparse
-from easydict import EasyDict as edict
-import yaml
-
 from conf import ensure_dir, set_logger
-from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
-from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
-
-# from rules_continuous import learn_rules, test_rules
 from models.rule_model import learn_rules, test_rules
 from losses import *
 from utils import *
-
-import matplotlib.pyplot as plt
-
-import datetime
-import pytz
 
 def parser2dict():
     parser = argparse.ArgumentParser()
@@ -45,7 +38,7 @@ def parser2dict():
     parser.add_argument('--change_w', type=int, default=None)
     # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet', 'DISFA'])
     parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet'])
-    parser.add_argument('--save_path', type=str, default='save/hunhe')
+    parser.add_argument('--save_path', type=str, default='save/hunhe/balanced')
 
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -187,30 +180,19 @@ def main(conf):
         infostr = {'Dataset {}: The training length is {}, The test length is {}'.format(dataset_name, train_len, test_len)}
         logging.info(infostr)
             
-    a = torch.cat(train_inputAU)
-    b = torch.cat(train_inputEMO)
-    t1 = list(zip(a, b))
-    random.shuffle(t1)
-    t3 = [x[0] for x in t1]
-    t4 = [x[1] for x in t1]
-    a = torch.stack(t3)
-    b = torch.stack(t4)
-    c = torch.cat(val_inputAU)
-    d = torch.cat(val_inputEMO)
-    t1 = list(zip(c, d))
-    random.shuffle(t1)
-    t3 = [x[0] for x in t1]
-    t4 = [x[1] for x in t1]
-    c = torch.stack(t3)
-    d = torch.stack(t4)
-    train_rules_input = (a, b)
-    val_rules_input = (c, d)
+    train_inputAU = torch.cat(train_inputAU)
+    train_inputEMO = torch.cat(train_inputEMO)
+    train_inputAU, train_inputEMO = shuffle_input(train_inputAU, train_inputEMO)
+    train_rules_input = (train_inputAU, train_inputEMO)
+    val_inputAU = torch.cat(val_inputAU)
+    val_inputEMO = torch.cat(val_inputEMO)
+    val_rules_input = (val_inputAU, val_inputEMO)
 
     change_w = conf.change_w
     conf.lr_relation = -1
-    output_rules, train_records, model = learn_rules(conf, device, train_rules_input, priori_rules, AU_p_d, summary_writer)#, change_w)
+    output_rules, train_records, model = learn_rules(conf, train_rules_input, priori_rules, AU_p_d, summary_writer)#, change_w)
     train_rules_loss, train_rules_acc, train_confu_m = train_records
-    val_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
+    val_records = test_rules(conf, model, val_rules_input, output_rules, AU_p_d, summary_writer)
     # val_records = test_rules(conf, device, val_rules_input, priori_rules, AU_p_d, summary_writer)
     val_rules_loss, val_rules_acc, val_confu_m = val_records
 
@@ -281,7 +263,7 @@ def eval_each(conf, rule_path=None):
         train_rules_input = (all_info['train_input_info'][info_source[0]], all_info['train_input_info'][info_source[1]])
         val_rules_input = (all_info['val_input_info'][info_source[0]], all_info['val_input_info'][info_source[1]])
 
-        val_records = test_rules(conf, model, device, val_rules_input, rules, AU_p_d, summary_writer)
+        val_records = test_rules(conf, model, val_rules_input, rules, AU_p_d, summary_writer)
         val_rules_loss, val_rules_acc, val_confu_m = val_records
         infostr_rules = {'Dataset {}: val_rules_loss: {:.5f}, val_rules_acc: {:.2f}'.format(dataset_name, val_rules_loss, 100.* val_rules_acc)}
         logging.info(infostr_rules)
@@ -295,6 +277,7 @@ def eval_each(conf, rule_path=None):
 
 
 if __name__=='__main__':
+    setup_seed(0)
     conf = parser2dict()
 
     cur_time = datetime.datetime.now(pytz.timezone('Asia/Shanghai'))

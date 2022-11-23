@@ -11,7 +11,7 @@ from models.rule_model import learn_rules, test_rules
 
 from conf import ensure_dir
 from utils import getDatasetInfo
-from utils_extend import get_config
+from model_extend.utils_extend import get_config
 from main_rule_extend_CIL import parser2dict
 
 import torch

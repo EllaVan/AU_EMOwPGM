@@ -243,7 +243,7 @@ def set_env(cfg):
 
 
 def set_outdir(conf):
-    default_outdir = 'results2'
+    default_outdir = 'results'
     if 'timedir' in conf:
         timestr = datetime.now().strftime('%d-%m-%Y_%I_%M-%S_%p')
         outdir = os.path.join(default_outdir,conf.exp_name,timestr)

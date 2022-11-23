@@ -1,7 +1,8 @@
-# 持续训练与持续泛化
-# 从BP4D训练训练好的规则开始，逐渐加入RAF、AffectNet、DISFA等数据集，目标是希望在所有的数据上都具备一定的正确规则泛化性
-# 加入的数据应该按照一定的顺序，从和BP4D最相近的开始增加，再到规则不太相似的，这样或许能够保证结果更好的可说明性
-import os,inspect
+'''
+持续训练与持续泛化
+从BP4D训练训练好的规则开始, 逐渐加入RAF、AffectNet、DISFA等数据集, 目标是希望在所有的数据上都具备一定的正确规则泛化性
+'''
+import os
 import sys
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
@@ -9,33 +10,28 @@ need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models')]
 sys.path = need_path + sys.path
 os.chdir(current_dir)
 
-import os
-from re import A, M
 import logging
 import shutil
+import argparse
+from easydict import EasyDict as edict
+import yaml
+import datetime
+import pytz
+
+import scipy
+import matplotlib.pyplot as plt
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
-import argparse
-from easydict import EasyDict as edict
-import yaml
-import scipy
-
 from conf import ensure_dir, set_logger
 from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
-from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
-
-from rules_continuous import learn_rules, test_rules
+from model_continuous.rules_continuous import learn_rules, test_rules
 from losses import *
 from utils import *
-
-import matplotlib.pyplot as plt
-
-import datetime
-import pytz
 
 def parser2dict():
     parser = argparse.ArgumentParser()
@@ -44,7 +40,7 @@ def parser2dict():
     parser.add_argument('--fold', type=int, default=0)
     # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet', 'DISFA'])
     parser.add_argument('--dataset_order', type=str, default=['RAF-DB', 'BP4D', 'AffectNet'])
-    parser.add_argument('--save_path', type=str, default='save')
+    parser.add_argument('--save_path', type=str, default='save/continuous/balanced')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -128,7 +124,7 @@ def get_config(cfg):
 def main(conf):
     pre_path1 = '/media/data1/wf/AU_EMOwPGM/codes/results'
     pre_path2 = 'Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001'
-    rule_path1 = '/media/data1/wf/AU_EMOwPGM/codes/save'
+    rule_path1 = '/media/data1/wf/AU_EMOwPGM/codes/results/save'
     for_all_test = []
     checkpoint = {}
     checkpoint['dataset_order'] = conf.dataset_order
@@ -227,7 +223,7 @@ def main(conf):
             train_rules_loss, train_rules_acc, train_confu_m = train_records
             checkpoint['train_'+dataset_name] = train_records
             checkpoint['rules_'+dataset_name] = output_rules
-            model = UpdateGraph(conf, output_rules, conf.loc1, conf.loc2).to(device)
+            model = UpdateGraph(conf, output_rules).to(device)
             test_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
             val_rules_loss, val_rules_acc, val_confu_m = test_records
             val_confu_m_copy = val_confu_m.clone()
@@ -252,7 +248,7 @@ def main(conf):
                 cur_allto_dataset = conf.dataset_order[cur_i]
                 temp_summary_path = os.path.join(cur_outdir, 'all_test', cur_allto_dataset)
                 ensure_dir(temp_summary_path, 0)
-                model = UpdateGraph(conf, latest_rules, loc1, loc2).to(device)
+                model = UpdateGraph(conf, latest_rules).to(device)
                 temp_summary_writer = SummaryWriter(temp_summary_path)
                 all_test_records = test_rules(conf, model, device, val_rules_input, latest_rules, AU_p_d, temp_summary_writer, all_confu_m)
                 all_rules_loss, all_rules_acc, all_confu_m = all_test_records
@@ -291,7 +287,7 @@ def read():
     a = 1
 
 if __name__=='__main__':
-    
+    setup_seed(0)
     conf = parser2dict()
     cur_time = datetime.datetime.now(pytz.timezone('Asia/Shanghai'))
     print(cur_time)
@@ -299,14 +295,14 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.dataset_order = ['RAF-DB', 'BP4D', 'AffectNet']
+    conf.dataset_order = ['BP4D', 'RAF-DB', 'AffectNet']
     if conf.dataset_order[0] == 'BP4D':
         prefix = 'BRA'
-        conf.gpu = 2
+        conf.gpu = 1
     else:
         prefix = 'RBA'
-        conf.gpu = 3
-    conf.outdir = os.path.join(conf.save_path, 'continuous', cur_day, prefix)
+        conf.gpu = 2
+    conf.outdir = os.path.join(conf.save_path, cur_day, prefix)
 
     global device
     device = torch.device('cuda:{}'.format(conf.gpu))

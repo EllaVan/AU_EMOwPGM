@@ -11,8 +11,9 @@ from conf import ensure_dir
 
 from tensorboardX import SummaryWriter
 
-from models.AU_EMO_BP import UpdateGraph_v2 as UpdateGraph
+from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
 from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
+from models.focal_loss import MultiClassFocalLossWithAlpha
 from utils import *
 import logging
 
@@ -51,7 +52,7 @@ def final_return(priori_update, EMO, AU, loc1, loc2):
     prob_AU[loc2] = prob_AU2
     return priori_update, EMO2AU_cpt, prob_AU
 
-def learn_rules(conf, device, input_info, input_rules, AU_p_d, summary_writer, *args):
+def learn_rules(conf, input_info, input_rules, AU_p_d, summary_writer, *args):
     device = conf.device
     loc1 = conf.loc1
     loc2 = conf.loc2
@@ -70,23 +71,37 @@ def learn_rules(conf, device, input_info, input_rules, AU_p_d, summary_writer, *
             init_lr = train_size / (num_all_img + train_size)
         
     if args:
-        # change_weight1 = train_size / (num_all_img + train_size)
         change_weight2 = 1
         for changing_item in args:
             change_weight2 = change_weight2 * changing_item
-        # init_lr = change_weight1 * change_weight2
         init_lr = init_lr * change_weight2
+
+    loss_weight = []
+    cl_num = []
+    pre_weight = train_size/len(EMO)
+    for emoi, emon in enumerate(EMO):
+        cl_weight = torch.where(labelsEMO==emoi)[0].shape[0]
+        cl_num.append(cl_weight)
+        loss_weight.append(cl_weight/pre_weight)
+    t1 = sum(cl_num)
+    # for each_weighti in range(len(cl_num)):
+    #     cl_num[each_weighti] = 1-cl_num[each_weighti]/t1 # 此时init_lr=0.01结果还行
+    for each_weighti in range(len(cl_num)):
+        cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
     
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
     acc_record = []
     err_record = []
     num_EMO = EMO2AU_cpt.shape[0]
     confu_m = torch.zeros((num_EMO, num_EMO))
-    update = UpdateGraph(conf, EMO2AU_cpt, prob_AU, loc1, loc2).to(device)
+    # update = UpdateGraph(conf, EMO2AU_cpt, prob_AU, loc1, loc2).to(device)
+    update = UpdateGraph(conf, input_rules).to(device)
     optim_graph = optim.SGD(update.parameters(), lr=init_lr)
     
     infostr = {'init_lr {}'.format(init_lr)}
     logging.info(infostr)
+    update.train()
     for idx in range(labelsAU.shape[0]):
         torch.cuda.empty_cache()
         adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
@@ -101,14 +116,17 @@ def learn_rules(conf, device, input_info, input_rules, AU_p_d, summary_writer, *
                     occ_au.append(priori_au_i)
                     AU_cnt[priori_au_i] += 1
 
-        if cur_item.sum() != 0:
+        if len(occ_au) > 1: # len(occ_au) != 0
             num_all_img += 1
             prob_all_au = RadiateAUs(conf, emo_label, AU_cpt, occ_au, loc2, EMO2AU, thresh=0.6) # 计算当前样本中AU的发生概率 P(AU | x)
 
-            cur_prob = update(prob_all_au)
+            cur_prob, _ = update(prob_all_au)
             cur_pred = torch.argmax(cur_prob)
             optim_graph.zero_grad()
-            err = criterion(cur_prob, emo_label)
+            # cur_err_weight = adjust_loss_weight(loss_weight[emo_label], idx, cl_num[emo_label])
+            # for param_group in optim_graph.param_groups:
+            #     param_group['lr'] = param_group['lr'] * loss_weight[emo_label]
+            err = criterion(cur_prob, emo_label)#*cur_err_weight
             acc = torch.eq(cur_pred, emo_label).sum().item()
             err_record.append(err.item())
             acc_record.append(acc)
@@ -129,7 +147,7 @@ def learn_rules(conf, device, input_info, input_rules, AU_p_d, summary_writer, *
     output_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
     return output_rules, output_records, update
 
-def test_rules(conf, update, device, input_info, input_rules, AU_p_d, summary_writer, confu_m=None):
+def test_rules(conf, update, input_info, input_rules, AU_p_d, summary_writer, confu_m=None):
     priori_AU, dataset_AU = AU_p_d
     labelsAU, labelsEMO = input_info
     EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = input_rules
@@ -161,9 +179,9 @@ def test_rules(conf, update, device, input_info, input_rules, AU_p_d, summary_wr
                     if cur_item[0, pos_priori_in_data] == 1:
                         occ_au.append(priori_au_i)
 
-            if cur_item.sum() != 0:
+            if len(occ_au) > 1: # len(occ_au) != 0
                 prob_all_au = RadiateAUs(conf, emo_label, AU_cpt, occ_au, loc2, EMO2AU_cpt, thresh=0.6)
-                cur_prob = update(prob_all_au)
+                cur_prob, _ = update(prob_all_au)
                 cur_pred = torch.argmax(cur_prob)
                 confu_m = confusion_matrix(cur_pred.data.cpu().numpy().reshape(1,).tolist(), labels=emo_label.data.cpu().numpy().tolist(), conf_matrix=confu_m)
                 err = criterion(cur_prob, emo_label)

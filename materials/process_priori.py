@@ -16,7 +16,7 @@ def cal_interAUPriori():
     num_EMO = EMO2AU_np.shape[0]
     num_AU = EMO2AU_np.shape[1]
     prob_AU = np.sum(EMO2AU_np, axis=0) / num_EMO  #AU的边缘概率
-    EMO_img_num = [230] * 6  #各个EMO类别中图片的数量
+    EMO_img_num = [230] * num_EMO  #各个EMO类别中图片的数量
 
     # 计算初始化的AU条件概率，AU_jpt[i][j] = P(AUi | AUj)
     # 初始化未考虑当一个表情中，两种AU均非确定性发生的情况(即对于一个确定的表情而言，AUi和AUj必有一个条件概率为1.0)

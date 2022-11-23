@@ -297,17 +297,19 @@ def main():
     # rules = torch.load(rules_path, map_location='cpu')['output_rules']
     # EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = rules
 
-    info_path = 'F:/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/continuous_v2/all_done.pth'
+    # info_path = 'continuous/save/continuous/2022-10-17/v3/BRA/all_done.pth'
+    info_path = 'F:/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/labelsAU_labelsEMO/epoch4_model_fold0.pth'
     all_info = torch.load(info_path, map_location='cpu')
-    rules = all_info['rules_RAF-DB']
+    # rules = all_info['rules_RAF-DB']
+    rules = all_info['output_rules']
 
     # draw_EMO2AU(graph, rules)
 
-    # draw_AU2EMO(graph, rules)
+    draw_AU2EMO(graph, rules)
 
     # draw_continuous(graph)
 
-    tmp(all_info)
+    # tmp(all_info)
 
     end_flag = 1
 

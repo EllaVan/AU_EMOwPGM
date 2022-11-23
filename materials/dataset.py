@@ -15,6 +15,23 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 import torch.utils.data as data
 
+color_jitter = transforms.ColorJitter(brightness=0.4,contrast=0.4,saturation=0.4,hue=0)
+SSL_transforms = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.RandomResizedCrop(size=(224, 224)),
+    transforms.RandomHorizontalFlip(),  # with 0.5 probability
+    transforms.RandomApply([color_jitter], p=0.8),
+    transforms.RandomGrayscale(p=0.2),
+    transforms.ToTensor(),])
+basic_train_transforms = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ToTensor(), 
+    transforms.Resize((224, 224)),
+    transforms.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    transforms.RandomErasing(scale=(0.02, 0.25)),
+    ])
+
 def add_g(image_array, mean=0.0, var=30):
     std = var ** 0.5
     image_add = image_array + np.random.normal(mean, std, image_array.shape)
@@ -95,7 +112,7 @@ class BP4D(Dataset):
 
             if self.transform is not None:
                 img1 = self.transform(img)
-                img_SSL = self.transform(img)
+                img_SSL = SSL_transforms(img)
 
             img2 = transforms.RandomHorizontalFlip(p=1)(img1)
 
@@ -154,7 +171,7 @@ class DISFA(Dataset):
 
             if self.transform is not None:
                 img1 = self.transform(img)
-                img_SSL = self.transform(img)
+                img_SSL = SSL_transforms(img)
 
             img2 = transforms.RandomHorizontalFlip(p=1)(img1)
 
@@ -213,7 +230,7 @@ class RAF(Dataset):
 
             if self.transform is not None:
                 img1 = self.transform(img)
-                img_SSL = self.transform(img)
+                img_SSL = SSL_transforms(img)
 
             img2 = transforms.RandomHorizontalFlip(p=1)(img1)
 

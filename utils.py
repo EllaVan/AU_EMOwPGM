@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import itertools
 
-from math import cos, pi
+from math import cos, sin, pi
 import torch
 from torch.utils.data import DataLoader
 
@@ -109,7 +109,7 @@ def getDatasetInfo(conf):
         test_dataset = BP4D(conf.dataset_path, phase='test', fold=conf.fold, transform=eval_transforms)
         test_len = len(test_dataset)
         test_loader = DataLoader(test_dataset, batch_size=conf.batch_size, shuffle=False, num_workers=conf.num_workers, pin_memory=True)
-    elif conf.dataset == 'RAF-DB' or conf.dataset == 'RAF-DB_compound' or conf.dataset == 'AffectNet':
+    elif conf.dataset == 'RAF-DB' or conf.dataset == 'RAF-DB-compound' or conf.dataset == 'AffectNet':
         train_dataset = RAF(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
         train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
@@ -176,7 +176,6 @@ def DISFA_infolistAU(list):
     return infostr
 
 def adjust_learning_rate(optimizer, epoch, epochs, init_lr, iteration, num_iter):
-
     current_iter = iteration + epoch * num_iter
     max_iter = epochs * num_iter
     lr = init_lr * (1 + cos(pi * current_iter / max_iter)) / 2
@@ -195,6 +194,12 @@ def adjust_rules_lr_v2(optimizer, init_lr, iteration, num_iter):
     lr = init_lr * (1 + cos(pi * (1.0/2) * current_iter / max_iter)) / 2 # * (1.0/2)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
+def adjust_loss_weight(init_weight, iteration, num_iter):
+    current_iter = iteration
+    max_iter = num_iter
+    weight = init_weight * (1 + sin(pi * (1.0/2) * current_iter / max_iter))
+    return weight
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -336,6 +341,15 @@ def walkFile(file):
         # for d in dirs: # 遍历所有的文件夹
             # print(os.path.join(root, d))
     return file_list
+
+def shuffle_input(inputAU, inputEMO):
+    a = list(zip(inputAU, inputEMO))
+    random.shuffle(a) 
+    b = [x[0] for x in a]
+    c = [x[1] for x in a]
+    inputAU = torch.stack(b)
+    inputEMO = torch.stack(c)
+    return inputAU, inputEMO
 
 
 

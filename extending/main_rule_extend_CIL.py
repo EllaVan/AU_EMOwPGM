@@ -1,5 +1,5 @@
 '''
-直接把unseen_priori拼接到seen_trained后面,然后两者一起用unseen samples训练
+直接把unseen_priori拼接到seen_trained后面,然后两者一起用unseen samples训练,也就是一般的CIL
 '''
 import os,inspect
 from queue import PriorityQueue
@@ -15,9 +15,9 @@ import pytz
 import argparse
 from easydict import EasyDict as edict
 import yaml
-
 import logging
 import shutil
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,14 +25,12 @@ import torch.optim as optim
 from tensorboardX import SummaryWriter
 
 from conf import ensure_dir, set_logger
-# from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
-from rule_extend import UpdateGraph_proj as UpdateGraph
+from model_extend.utils_extend import *
+from model_extend.rule_extend import UpdateGraph
+from model_extend.rule_extend2 import learn_rules, test_rules#, generate_seen_sample
 # from models.rule_model import learn_rules, test_rules
-from rule_extend import learn_rules_KL as learn_rules
-from rule_extend import proj_func, test_rules_dis, test_rules
 from losses import *
 from utils import *
-from utils_extend import *
 
 def parser2dict():
     parser = argparse.ArgumentParser()
@@ -55,7 +53,7 @@ def parser2dict():
     parser.add_argument('--AUthresh', type=float, default=0.6)
     parser.add_argument('--zeroPad', type=float, default=1e-5)
 
-    parser.add_argument('--priori_alpha', type=float, default=0.5)
+    parser.add_argument('--pre_train_alpha', type=float, default=0.66)
 
     config, unparsed = parser.parse_known_args()
     cfg = edict(config.__dict__)
@@ -76,31 +74,67 @@ def main(conf):
 
         data_path = os.path.join(pre_data_path, dataset_name+'.pkl')
         data_info = torch.load(data_path, map_location='cpu')
-        train_inputAU = data_info['train_input_info']['unseen_AU']
-        train_inputEMO = data_info['train_input_info']['unseen_EMO']+num_seen
-        a = list(zip(train_inputAU, train_inputEMO))
-        random.shuffle(a) 
-        b = [x[0] for x in a]
-        c = [x[1] for x in a]
-        train_inputAU = torch.stack(b)
-        train_inputEMO = torch.stack(c)
-        train_rules_input = (train_inputAU, train_inputEMO)
-        val_inputAU = torch.cat((data_info['val_input_info']['seen_AU'], data_info['val_input_info']['unseen_AU']))
-        val_inputEMO = torch.cat((data_info['val_input_info']['seen_EMO'], data_info['val_input_info']['unseen_EMO']+num_seen))
-        val_rules_input = (val_inputAU, val_inputEMO)
-        seen_val_inputAU = data_info['val_input_info']['seen_AU']
-        seen_val_inputEMO = data_info['val_input_info']['seen_EMO']
-        seen_val_rules_input = (seen_val_inputAU, seen_val_inputEMO)
-        unseen_val_inputAU = data_info['val_input_info']['unseen_AU']
-        unseen_val_inputEMO = data_info['val_input_info']['unseen_EMO']+num_seen
-        unseen_val_rules_input = (unseen_val_inputAU, unseen_val_inputEMO)
-        
+
         train_loader, test_loader, train_len, test_len = getDatasetInfo(conf)
         unseen_priori_rules = get_unseen_priori_rule(train_loader)
         seen_priori_rules = data_info['val_input_info']['seen_priori_rules']
         seen_trained_rule_info = torch.load(os.path.join(seen_rule_path, dataset_name, 'output.pth'), map_location='cpu')
         seen_trained_rules = seen_trained_rule_info['output_rules']
         input_rules = get_complete_rule(seen_trained_rules, unseen_priori_rules)
+        
+        seen_train_inputAU = data_info['train_input_info']['seen_AU']
+        seen_train_inputEMO = data_info['train_input_info']['seen_EMO']
+        unseen_train_inputAU = data_info['train_input_info']['unseen_AU']
+        unseen_train_inputEMO = data_info['train_input_info']['unseen_EMO']+num_seen
+        # train_inputAU = torch.cat((seen_train_inputAU, unseen_train_inputAU))
+        # train_inputEMO = torch.cat((seen_train_inputEMO, unseen_train_inputEMO))
+        # train_inputAU = seen_train_inputAU
+        # train_inputEMO = seen_train_inputEMO
+        # train_inputAU = unseen_train_inputAU
+        # train_inputEMO = unseen_train_inputEMO
+        
+        samplesAU, samplesEMO = generate_seen_sample(conf, seen_trained_rules[0], seen_trained_rules[-2])
+        repeat_size = unseen_train_inputEMO.shape[0] // len(samplesEMO)
+        samplesAU = samplesAU.repeat(repeat_size, 1)
+        samplesEMO = torch.concat(samplesEMO * repeat_size)
+
+        # conf.pre_train_alpha = 0.66
+        unseen_train_inputAU, unseen_train_inputEMO = shuffle_input(unseen_train_inputAU, unseen_train_inputEMO)
+        pre_train_idx = int(conf.pre_train_alpha*unseen_train_inputEMO.shape[0])
+        conf.pre_train_idx = pre_train_idx
+        part1_unseen_trainAU = unseen_train_inputAU[:pre_train_idx, :]
+        part1_unseen_trainEMO = unseen_train_inputEMO[:pre_train_idx]
+        part2_unseen_trainAU = unseen_train_inputAU[pre_train_idx:, :]
+        part2_unseen_trainEMO = unseen_train_inputEMO[pre_train_idx:]
+        part1_unseen_trainAU, part1_unseen_trainEMO = shuffle_input(part1_unseen_trainAU, part1_unseen_trainEMO)
+        part2_unseen_trainAU = torch.cat((samplesAU, part2_unseen_trainAU))
+        part2_unseen_trainEMO = torch.cat((samplesEMO, part2_unseen_trainEMO))
+        part2_unseen_trainAU, part2_unseen_trainEMO = shuffle_input(part2_unseen_trainAU, part2_unseen_trainEMO)
+        train_inputAU = torch.cat((part1_unseen_trainAU, part2_unseen_trainAU))
+        train_inputEMO = torch.cat((part1_unseen_trainEMO, part2_unseen_trainEMO))
+
+        # samplek = int(unseen_train_inputEMO.shape[0]/num_unseen)
+        # samplek = 1000
+        # samplesAU, samplesEMO = sample_seen(seen_trained_rules[-2], seen_train_inputAU, seen_train_inputEMO, ori_samplek=samplek)
+
+        # samplesAU = seen_train_inputAU
+        # samplesEMO = seen_train_inputEMO
+
+        # train_inputAU = torch.cat((samplesAU, unseen_train_inputAU))
+        # train_inputEMO = torch.cat((samplesEMO, unseen_train_inputEMO))
+
+        # train_inputAU, train_inputEMO = shuffle_input(train_inputAU, train_inputEMO)
+
+        train_rules_input = (train_inputAU, train_inputEMO)
+        val_inputAU = torch.cat((data_info['val_input_info']['seen_AU'], data_info['val_input_info']['unseen_AU']))
+        val_inputEMO = torch.cat((data_info['val_input_info']['seen_EMO'], data_info['val_input_info']['unseen_EMO']+num_seen))
+        val_rules_input = (val_inputAU, val_inputEMO)
+        # seen_val_inputAU = data_info['val_input_info']['seen_AU']
+        # seen_val_inputEMO = data_info['val_input_info']['seen_EMO']
+        # seen_val_rules_input = (seen_val_inputAU, seen_val_inputEMO)
+        # unseen_val_inputAU = data_info['val_input_info']['unseen_AU']
+        # unseen_val_inputEMO = data_info['val_input_info']['unseen_EMO']+num_seen
+        # unseen_val_rules_input = (unseen_val_inputAU, unseen_val_inputEMO)
 
         dataset_AU = train_loader.dataset.AU
         priori_AU = train_loader.dataset.priori['AU']
@@ -112,12 +146,12 @@ def main(conf):
         # unseen_EMO = ['fear', 'disgust']
         # unseen_info = infolist(unseen_EMO, dataset_AU)
 
-        conf.lr_relation = 1e-3
-        output_rules, train_records, model = learn_rules(conf, device, train_rules_input, input_rules, seen_trained_rules, AU_p_d, summary_writer)
+        conf.lr_relation = 1e-4
+        output_rules, train_records, model = learn_rules(conf, train_rules_input, input_rules, seen_trained_rules, AU_p_d, summary_writer)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         
-        model = UpdateGraph(conf, output_rules, conf.loc1, conf.loc2, temp=1).to(device)
-        val_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
+        model = UpdateGraph(conf, output_rules, temp=1).to(device)
+        val_records = test_rules(conf, model, val_rules_input, output_rules, AU_p_d, summary_writer)
         val_rules_loss, val_rules_acc, val_confu_m = val_records
         val_info = {}
         val_info['rules_loss'] = val_rules_loss
@@ -152,10 +186,10 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day)
+    conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day, 'v10_3')
 
     global device
-    conf.gpu = 2
+    conf.gpu = 3
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)

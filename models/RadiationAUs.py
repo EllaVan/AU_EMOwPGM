@@ -40,7 +40,7 @@ def static_op(conf, emo_label, prob_all_au, loc2, EMO2AU):
 
     return prob_all_au
 
-def RadiateAUs_v2(conf, emo_label, AU_cpt, occAU, loc2, EMO2AU, prob_occAU=None, thresh=0.6, num_EMO=6):
+def RadiateAUs_v2(conf, emo_label, AU_cpt, occAU, loc2, EMO2AU, prob_occAU=None, thresh=0.6, num_EMO=6, if_static_op=True, is_interAU=True):
     if prob_occAU is None:
         prob_occAU = [[1]] * len(occAU)
     ra_au_1 = AU_cpt[:, occAU].reshape(len(occAU), -1) * prob_occAU
@@ -49,7 +49,11 @@ def RadiateAUs_v2(conf, emo_label, AU_cpt, occAU, loc2, EMO2AU, prob_occAU=None,
     prob_occAU1 = np.mean(ra_au_1, axis=0).reshape(-1, 1)
     prob_all_au = prob_occAU1.copy()
     prob_all_au[occAU, :] = prob_occAU
-    prob_all_au = static_op(conf, emo_label, prob_all_au, loc2, EMO2AU)
+    if is_interAU is False:
+        prob_all_au = np.zeros_like(prob_occAU1)
+        prob_all_au[occAU, :] = prob_occAU
+    if if_static_op is True:
+        prob_all_au = static_op(conf, emo_label, prob_all_au, loc2, EMO2AU)
 
     # if emo_label == 2:
     #     if random.random() <= 0.33:

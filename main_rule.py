@@ -24,8 +24,6 @@ from easydict import EasyDict as edict
 import yaml
 
 from conf import ensure_dir, set_logger
-from models.AU_EMO_BP import UpdateGraph_v2 as UpdateGraph
-from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
 from models.rule_model import learn_rules, test_rules
 from losses import *
 from utils import *
@@ -40,8 +38,9 @@ def parser2dict():
     # ----------------------basic settings------------------------
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
-    parser.add_argument('--dataset_order', type=str, default=['RAF-DB', 'BP4D', 'AffectNet', 'DISFA'])
-    parser.add_argument('--outdir', type=str, default='save')
+    # parser.add_argument('--dataset_order', type=str, default=['RAF-DB', 'AffectNet', 'BP4D', 'DISFA'])
+    parser.add_argument('--dataset_order', type=str, default=['AffectNet'])
+    parser.add_argument('--outdir', type=str, default='save_balanced')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -148,8 +147,13 @@ def main(conf):
         dataset_info = infolist(dataset_EMO, dataset_AU)
 
         all_info = torch.load(info_path, map_location='cpu')#['state_dict']
-        train_rules_input = (all_info['train_input_info'][info_source[0]], all_info['train_input_info'][info_source[1]])
-        val_rules_input = (all_info['val_input_info'][info_source[0]], all_info['val_input_info'][info_source[1]])
+        train_inputAU = all_info['train_input_info'][info_source[0]]
+        train_inputEMO = all_info['train_input_info'][info_source[1]]
+        train_inputAU, train_inputEMO = shuffle_input(train_inputAU, train_inputEMO)
+        train_rules_input = (train_inputAU, train_inputEMO)
+        val_inputAU = all_info['val_input_info'][info_source[0]]
+        val_inputEMO = all_info['val_input_info'][info_source[1]]
+        val_rules_input = (val_inputAU, val_inputEMO)
 
         EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = tuple(train_loader.dataset.priori.values())
         ori_size = np.sum(np.array(EMO_img_num))
@@ -161,14 +165,14 @@ def main(conf):
         input_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
         
         summary_writer = SummaryWriter(cur_outdir)
-        conf.lr_relation = -1
-        output_rules, train_records, model = learn_rules(conf, device, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
+        conf.lr_relation = 0.001
+        output_rules, train_records, model = learn_rules(conf, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         train_info = {}
         train_info['rules_loss'] = train_rules_loss
         train_info['rules_acc'] = train_rules_acc
         train_info['train_confu_m'] = train_confu_m
-        val_records = test_rules(conf, model, device, val_rules_input, output_rules, AU_p_d, summary_writer)
+        val_records = test_rules(conf, model, val_rules_input, output_rules, AU_p_d, summary_writer)
         val_rules_loss, val_rules_acc, val_confu_m = val_records
         val_info = {}
         val_info['rules_loss'] = val_rules_loss
@@ -202,6 +206,7 @@ def main(conf):
     a = 1
 
 if __name__=='__main__':
+    setup_seed(0)
     conf = parser2dict()
     cur_time = datetime.datetime.now(pytz.timezone('Asia/Shanghai'))
     print(cur_time)
@@ -211,11 +216,14 @@ if __name__=='__main__':
     cur_clock = cur_time.split(' ')[1]
 
     global device
-    conf.gpu = 1
+    conf.gpu = 3
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)
+    conf.outdir = os.path.join(conf.outdir, 'v3_AffectNet')
     ensure_dir(conf.outdir, 0)
     set_logger(conf)
+    shutil.copyfile("./models/rule_model.py", os.path.join(conf.outdir,'rule_model.py'))
+    shutil.copyfile("./main_rule.py", os.path.join(conf.outdir,'main_rule.py'))
     main(conf)
     a = 1

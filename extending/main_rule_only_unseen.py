@@ -26,10 +26,10 @@ from tensorboardX import SummaryWriter
 
 from conf import ensure_dir, set_logger
 # from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
-from rule_extend import UpdateGraph_proj as UpdateGraph
+from model_extend.rule_extend import UpdateGraph_proj as UpdateGraph
 # from models.rule_model import learn_rules, test_rules
-from rule_extend import learn_rules_KL as learn_rules
-from rule_extend import proj_func, test_rules_dis, test_rules
+from model_extend.rule_extend import learn_rules_KL as learn_rules
+from model_extend.rule_extend import proj_func, test_rules_dis, test_rules
 from losses import *
 from utils import *
 from utils_extend import *
