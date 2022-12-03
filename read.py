@@ -1,6 +1,6 @@
 import torch
 
-path = '/media/data1/wf/AU_EMOwPGM/codes/extending/save/seen/2022-10-31/AffectNet/output.pth'
+path = '/media/data1/wf/AU_EMOwPGM/codes/save_balanced/v2_AffectNet/AffectNet/predsAU_labelsEMO/epoch1_model_fold0.pth'
 info = torch.load(path, map_location='cpu')
 output_rules = info['output_rules']
 val_confu_m = info['val_info']['val_confu_m']

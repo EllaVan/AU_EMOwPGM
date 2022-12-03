@@ -33,11 +33,11 @@ from utils import *
 def parser2dict():
     parser = argparse.ArgumentParser()
     # ----------------------basic settings------------------------
-    parser.add_argument('--gpu', type=str, default='cuda:1')
+    parser.add_argument('--gpu', type=int, default=2)
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--change_w', type=int, default=None)
     # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet', 'DISFA'])
-    parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet'])
+    parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB'])#, 'AffectNet'])
     parser.add_argument('--save_path', type=str, default='save/hunhe/balanced')
 
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
@@ -53,6 +53,12 @@ def parser2dict():
     parser.add_argument('--zeroPad', type=float, default=1e-5)
 
     parser.add_argument('--priori_alpha', type=float, default=0.5)
+
+    # --------------------settings for balanced-------------------
+    parser.add_argument('--lr_relation', type=float, default=-1)
+    parser.add_argument('--isFocal_Loss', type=bool, default=True)
+    parser.add_argument('--isClass_Weight', type=bool, default=False)
+    parser.add_argument('--isClass_Weight_decay', type=bool, default=False)
 
     config, unparsed = parser.parse_known_args()
     cfg = edict(config.__dict__)
@@ -189,7 +195,7 @@ def main(conf):
     val_rules_input = (val_inputAU, val_inputEMO)
 
     change_w = conf.change_w
-    conf.lr_relation = -1
+    # conf.lr_relation = 0.0001
     output_rules, train_records, model = learn_rules(conf, train_rules_input, priori_rules, AU_p_d, summary_writer)#, change_w)
     train_rules_loss, train_rules_acc, train_confu_m = train_records
     val_records = test_rules(conf, model, val_rules_input, output_rules, AU_p_d, summary_writer)
@@ -284,7 +290,7 @@ if __name__=='__main__':
     print(cur_time)
     # cur_day = str(cur_time).split('.')[0].replace(' ', '_')
     cur_day = str(cur_time).split(' ')[0]
-    conf.outdir = os.path.join(conf.save_path, cur_day)
+    conf.outdir = os.path.join(conf.save_path, cur_day+'_BR')
 
     global device
     conf.gpu = 0

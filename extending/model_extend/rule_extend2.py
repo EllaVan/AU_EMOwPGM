@@ -19,6 +19,7 @@ from tensorboardX import SummaryWriter
 from conf import ensure_dir
 from model_extend.utils_extend import crop_EMO2AU, final_return
 from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
+from models.focal_loss import MultiClassFocalLossWithAlpha
 from utils import *
 
 class proj_func(nn.Module):
@@ -163,7 +164,25 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
             change_weight2 = change_weight2 * changing_item
         init_lr = init_lr * change_weight2
     
-    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.CrossEntropyLoss()
+    loss_weight = []
+    cl_num = []
+    pre_weight = train_size/len(EMO)
+    for emoi, emon in enumerate(EMO):
+        cl_weight = torch.where(labelsEMO==emoi)[0].shape[0] # 每种标签有多少个样本
+        cl_num.append(cl_weight)
+        loss_weight.append(cl_weight/pre_weight) # N_mean / N = init_lr / cur_lr, N_mean表示总样本数量下保持EMO均匀分布的平均样本数量
+    t1 = sum(cl_num)
+    '''
+    for each_weighti in range(len(cl_num)):
+        cl_num[each_weighti] = 1-cl_num[each_weighti]/t1 # 此时init_lr=0.01结果还行
+    '''
+    for each_weighti in range(len(cl_num)):
+        # Focal_Loss中的alpha参数越大，标签为这一类的loss值越大，为了降低样本数量多的类别的loss影响，需要为样本量多的类别赋小权重
+        cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
+    criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
+
+
     acc_record = []
     err_record = []
     cls_record = []

@@ -1,8 +1,7 @@
 '''
-直接把unseen_priori拼接到seen_trained后面,然后两者一起用unseen samples训练,也就是一般的CIL
+伪造样本
 '''
-import os,inspect
-from queue import PriorityQueue
+import os
 import sys
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
@@ -27,7 +26,7 @@ from tensorboardX import SummaryWriter
 from conf import ensure_dir, set_logger
 from model_extend.utils_extend import *
 from model_extend.rule_extend import UpdateGraph
-from model_extend.rule_extend2 import learn_rules, test_rules#, generate_seen_sample
+from model_extend.rule_extend2 import learn_rules, test_rules, generate_seen_sample
 # from models.rule_model import learn_rules, test_rules
 from losses import *
 from utils import *
@@ -38,7 +37,7 @@ def parser2dict():
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'DISFA', 'AffectNet'])
-    parser.add_argument('--outdir', type=str, default='save/unseen/CIL/balanced')
+    parser.add_argument('--outdir', type=str, default='save/unseen/CIL')
     parser.add_argument('--rule_dir', type=str, default='save/seen')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
@@ -63,7 +62,7 @@ def main(conf):
     num_seen = 4
     num_unseen = 2
     pre_data_path = 'dataset'
-    seen_rule_path = 'save/seen/balanced/2022-11-22'
+    seen_rule_path = 'save/seen/2022-11-08'
     for dataset_i, dataset_name in enumerate(conf.dataset_order):
         conf.dataset = dataset_name
         conf = get_config(conf)
@@ -186,7 +185,7 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day)
+    conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day, 'v10_3')
 
     global device
     conf.gpu = 3

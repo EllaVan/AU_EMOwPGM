@@ -1,3 +1,11 @@
+import os,inspect
+import sys
+current_dir = os.path.dirname(__file__)
+parent_dir = os.path.dirname(current_dir)
+need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models')]
+sys.path = need_path + sys.path
+os.chdir(current_dir)
+
 import os
 # os.chdir(os.path.dirname(__file__))
 import shutil

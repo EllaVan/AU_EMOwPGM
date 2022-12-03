@@ -1,16 +1,12 @@
-import sys
-sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 import os
-# os.chdir(os.path.dirname(__file__))
-import shutil
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from conf import ensure_dir
-
 from tensorboardX import SummaryWriter
 
+from conf import ensure_dir
 from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
 from models.RadiationAUs import RadiateAUs_v2 as RadiateAUs
 from models.focal_loss import MultiClassFocalLossWithAlpha
@@ -80,28 +76,33 @@ def learn_rules(conf, input_info, input_rules, AU_p_d, summary_writer, *args):
     cl_num = []
     pre_weight = train_size/len(EMO)
     for emoi, emon in enumerate(EMO):
-        cl_weight = torch.where(labelsEMO==emoi)[0].shape[0]
+        cl_weight = torch.where(labelsEMO==emoi)[0].shape[0] # 每种标签有多少个样本
         cl_num.append(cl_weight)
-        loss_weight.append(cl_weight/pre_weight)
+        loss_weight.append(cl_weight/pre_weight) # N_mean / N = init_lr / cur_lr, N_mean表示总样本数量下保持EMO均匀分布的平均样本数量
     t1 = sum(cl_num)
-    # for each_weighti in range(len(cl_num)):
-    #     cl_num[each_weighti] = 1-cl_num[each_weighti]/t1 # 此时init_lr=0.01结果还行
+    '''
     for each_weighti in range(len(cl_num)):
+        cl_num[each_weighti] = 1-cl_num[each_weighti]/t1 # 此时init_lr=0.01结果还行
+    '''
+    for each_weighti in range(len(cl_num)):
+        # Focal_Loss中的alpha参数越大，标签为这一类的loss值越大，为了降低样本数量多的类别的loss影响，需要为样本量多的类别赋小权重
         cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
+    if conf.isFocal_Loss is True:
+        criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
+    else:
+        criterion = nn.CrossEntropyLoss()
     
-    # criterion = nn.CrossEntropyLoss()
-    criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
     acc_record = []
     err_record = []
     num_EMO = EMO2AU_cpt.shape[0]
     confu_m = torch.zeros((num_EMO, num_EMO))
-    # update = UpdateGraph(conf, EMO2AU_cpt, prob_AU, loc1, loc2).to(device)
     update = UpdateGraph(conf, input_rules).to(device)
+    update.train()
     optim_graph = optim.SGD(update.parameters(), lr=init_lr)
     
     infostr = {'init_lr {}'.format(init_lr)}
     logging.info(infostr)
-    update.train()
+    
     for idx in range(labelsAU.shape[0]):
         torch.cuda.empty_cache()
         adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
@@ -112,7 +113,7 @@ def learn_rules(conf, input_info, input_rules, AU_p_d, summary_writer, *args):
         for priori_au_i, priori_au in enumerate(priori_AU):
             if priori_au in dataset_AU:
                 pos_priori_in_data = dataset_AU.index(priori_au)
-                if cur_item[0, pos_priori_in_data] == 1:
+                if cur_item[0, pos_priori_in_data] == 1: 
                     occ_au.append(priori_au_i)
                     AU_cnt[priori_au_i] += 1
 
@@ -123,10 +124,16 @@ def learn_rules(conf, input_info, input_rules, AU_p_d, summary_writer, *args):
             cur_prob, _ = update(prob_all_au)
             cur_pred = torch.argmax(cur_prob)
             optim_graph.zero_grad()
-            # cur_err_weight = adjust_loss_weight(loss_weight[emo_label], idx, cl_num[emo_label])
-            # for param_group in optim_graph.param_groups:
-            #     param_group['lr'] = param_group['lr'] * loss_weight[emo_label]
-            err = criterion(cur_prob, emo_label)#*cur_err_weight
+            
+            if conf.isClass_Weight is True:
+                if conf.isClass_Weight_decay is True:
+                    cur_err_weight = adjust_loss_weight(loss_weight[emo_label], idx, cl_num[emo_label])
+                    err = criterion(cur_prob, emo_label)*cur_err_weight
+                else:
+                    err = criterion(cur_prob, emo_label)*loss_weight[emo_label]
+            else:
+                err = criterion(cur_prob, emo_label)
+
             acc = torch.eq(cur_pred, emo_label).sum().item()
             err_record.append(err.item())
             acc_record.append(acc)
@@ -163,9 +170,7 @@ def test_rules(conf, update, input_info, input_rules, AU_p_d, summary_writer, co
     loc1 = conf.loc1
     loc2 = conf.loc2
 
-    # update = UpdateGraph(conf, EMO2AU_cpt, prob_AU, loc1, loc2).to(device)
     update.eval()
-
     with torch.no_grad():
         for idx in range(labelsAU.shape[0]):
             torch.cuda.empty_cache()

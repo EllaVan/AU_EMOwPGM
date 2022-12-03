@@ -6,7 +6,7 @@ import os
 import sys
 current_dir = os.path.dirname(__file__)
 parent_dir = os.path.dirname(current_dir)
-need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models')]
+need_path = [current_dir, parent_dir, os.path.join(parent_dir,'models'), os.path.join(parent_dir,'continuous')]
 sys.path = need_path + sys.path
 os.chdir(current_dir)
 
@@ -36,11 +36,10 @@ from utils import *
 def parser2dict():
     parser = argparse.ArgumentParser()
     # ----------------------basic settings------------------------
-    parser.add_argument('--gpu', type=str, default='cuda:1')
+    parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--fold', type=int, default=0)
-    # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'AffectNet', 'DISFA'])
-    parser.add_argument('--dataset_order', type=str, default=['RAF-DB', 'BP4D', 'AffectNet'])
-    parser.add_argument('--save_path', type=str, default='save/continuous/balanced')
+    parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB'])#, 'AffectNet'])
+    parser.add_argument('--save_path', type=str, default='save/continuous')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -49,32 +48,21 @@ def parser2dict():
     # --------------------settings for training-------------------
     parser.add_argument('--manualSeed', type=int, default=None)
 
-    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--lr_decay_idx', type=int, default=20000)
     parser.add_argument('--AUthresh', type=float, default=0.6)
     parser.add_argument('--zeroPad', type=float, default=1e-5)
 
     parser.add_argument('--priori_alpha', type=float, default=0.5)
 
+    # --------------------settings for balanced-------------------
+    parser.add_argument('--lr_relation', type=float, default=-1)
+    parser.add_argument('--isFocal_Loss', type=bool, default=False)
+    parser.add_argument('--isClass_Weight', type=bool, default=False)
+    parser.add_argument('--isClass_Weight_decay', type=bool, default=False)
+
     config, unparsed = parser.parse_known_args()
     cfg = edict(config.__dict__)
     return edict(cfg)
-
-def print_conf(opt):
-    """Print and save options
-    It will print both current options and default values(if different).
-    It will save options into a text file / [checkpoints_dir] / opt.txt
-    """
-    message = ''
-    message += '----------------- Options ---------------\n'
-    for k, v in sorted(vars(opt).items()):
-        comment = ''
-        # default = self.parser.get_default(k)
-        # if v != default:
-        #     comment = '\t[default: %s]' % str(default)
-        message += '{:>25}: {:<30}{}\n'.format(str(k), str(v), comment)
-    message += '----------------- End -------------------'
-    return message
 
 def get_config(cfg):
     if cfg.dataset == 'BP4D':
@@ -128,7 +116,7 @@ def main(conf):
     for_all_test = []
     checkpoint = {}
     checkpoint['dataset_order'] = conf.dataset_order
-    fenbu_info = torch.load(os.path.join('save/fenbu/prob.pth'), map_location='cpu')
+    fenbu_info = torch.load(os.path.join('../continuous/save/fenbu/prob.pth'), map_location='cpu')
     for dataset_i, dataset_name in enumerate(conf.dataset_order):
         torch.cuda.empty_cache()
         pre_path = os.path.join(pre_path1, dataset_name, pre_path2)
@@ -218,7 +206,7 @@ def main(conf):
             # else:
             #     change_w = KL_AU
 
-            conf.lr_relation = -1
+            # conf.lr_relation = -1
             output_rules, train_records, model = learn_rules(conf, train_rules_input, priori_rules, latest_rules, AU_p_d, summary_writer, change_w)#, 0.23) # change_w_sheet[dataset_i - 1]
             train_rules_loss, train_rules_acc, train_confu_m = train_records
             checkpoint['train_'+dataset_name] = train_records
@@ -243,17 +231,25 @@ def main(conf):
             latest_rules = output_rules
 
         if dataset_i >= 1:
-            all_confu_m = val_confu_m_copy
+            latest_confu_m = val_confu_m_copy
             for cur_i, (AU_p_d, val_rules_input, loc1, loc2) in enumerate(for_all_test[:-1]):
                 cur_allto_dataset = conf.dataset_order[cur_i]
                 temp_summary_path = os.path.join(cur_outdir, 'all_test', cur_allto_dataset)
                 ensure_dir(temp_summary_path, 0)
                 model = UpdateGraph(conf, latest_rules).to(device)
                 temp_summary_writer = SummaryWriter(temp_summary_path)
-                all_test_records = test_rules(conf, model, device, val_rules_input, latest_rules, AU_p_d, temp_summary_writer, all_confu_m)
+                all_test_records = test_rules(conf, model, device, val_rules_input, latest_rules, AU_p_d, temp_summary_writer, latest_confu_m)
                 all_rules_loss, all_rules_acc, all_confu_m = all_test_records
                 infostr_rules = {'The fine-tuned rules val acc on {} is {:.2f}' .format(cur_allto_dataset, 100*all_rules_acc)}
                 logging.info(infostr_rules)
+                cur_val_confu_m = all_confu_m - latest_confu_m
+                infostr_EMO = {'The fine-tuned rules Val list acc on {}:'}
+                logging.info(infostr_EMO)
+                for i in range(cur_val_confu_m.shape[0]):
+                    cur_val_confu_m[:, i] = cur_val_confu_m[:, i] / cur_val_confu_m[:, i].sum(axis=0)
+                infostr_EMO = dataset_info.info_EMO(torch.diag(cur_val_confu_m).cpu().numpy().tolist())
+                logging.info(infostr_EMO)
+                latest_confu_m = all_confu_m
                 
             all_testEMO_list = torch.diag(all_confu_m).cpu().numpy().tolist()
             all_rules_acc = sum(all_testEMO_list) / torch.sum(all_confu_m)
@@ -295,22 +291,35 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.dataset_order = ['RAF-DB', 'BP4D', 'AffectNet']
+
+    prefix = 'LR_'+str(conf.lr_relation)
+    if conf.isFocal_Loss is True:
+        prefix = prefix + '_wFocalLoss'
+    else:
+        prefix = prefix + '_CELoss'
+    if conf.isClass_Weight is True:
+        if conf.isClass_Weight_decay is True:
+            prefix = prefix + '_wClassWeight_decay'
+        else:
+            prefix = prefix + '_wClassWeight'
+    else:
+        prefix = prefix + '_UniformWeight'
+
+    conf.dataset_order = ['BP4D', 'RAF-DB', 'AffectNet']
     if conf.dataset_order[0] == 'BP4D':
-        prefix = 'BRA'
+        prefix_order = 'BRA'
         conf.gpu = 1
     else:
-        prefix = 'RBA'
+        prefix_order = 'RBA'
         conf.gpu = 2
-    conf.outdir = os.path.join(conf.save_path, cur_day+'_v2', prefix)
+    conf.outdir = os.path.join(conf.save_path, cur_day, prefix, prefix_order)
+    ensure_dir(conf.outdir, 0)
 
     global device
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)
+    shutil.copyfile("../continuous/model_continuous/rules_continuous.py", os.path.join(conf.outdir,'rules_continuous.py'))
+    shutil.copyfile("./main_continuous.py", os.path.join(conf.outdir,'main_continuous.py'))
     main(conf)
-    # plot_viz()
-    # tmp()
-    
-    # read()
     a = 1
