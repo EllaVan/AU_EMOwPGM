@@ -1,0 +1,43 @@
+nohup: 忽略输入
+2022-11-22 21:50:24.816451+08:00
+----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D', 'DISFA', 'RAF-DB', 'AffectNet']
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/seen/balanced/2022-11-22 
+             priori_alpha: 0.5                           
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+writting logs to file save/seen/balanced/2022-11-22/train.log
+{'init_lr 0.0001'}
+{'Dataset: BP4D train_rules_loss: 0.28155, train_rules_acc: 80.77, val_rules_loss: 0.89611, val_rules_acc: 84.07'}
+{'EMO Rules Train Acc-list:'}
+{'happy: 99.98, sad: 29.68, anger: 89.73, surprise: 88.55'}
+{'EMO Rules Val Acc-list:'}
+{'happy: 100.00, sad: 38.52, anger: 91.23, surprise: 95.42'}
+{'init_lr 0.0001'}
+{'Dataset: DISFA train_rules_loss: 0.18179, train_rules_acc: 95.99, val_rules_loss: 0.78127, val_rules_acc: 96.16'}
+{'EMO Rules Train Acc-list:'}
+{'happy: 82.27, sad: 99.54, anger: 99.98, surprise: 95.22'}
+{'EMO Rules Val Acc-list:'}
+{'happy: 78.74, sad: 100.00, anger: 100.00, surprise: 97.99'}
+{'init_lr 0.0001'}
+{'Dataset: RAF-DB train_rules_loss: 0.28547, train_rules_acc: 77.97, val_rules_loss: 0.94755, val_rules_acc: 79.61'}
+{'EMO Rules Train Acc-list:'}
+{'happy: 96.38, sad: 13.22, anger: 94.98, surprise: 99.27'}
+{'EMO Rules Val Acc-list:'}
+{'happy: 99.23, sad: 10.90, anger: 95.68, surprise: 100.00'}
+{'init_lr 0.0001'}
+{'Dataset: AffectNet train_rules_loss: 0.19041, train_rules_acc: 88.38, val_rules_loss: 0.94807, val_rules_acc: 77.92'}
+{'EMO Rules Train Acc-list:'}
+{'happy: 99.39, sad: 57.91, anger: 49.36, surprise: 99.66'}
+{'EMO Rules Val Acc-list:'}
+{'happy: 100.00, sad: 54.52, anger: 54.44, surprise: 99.77'}

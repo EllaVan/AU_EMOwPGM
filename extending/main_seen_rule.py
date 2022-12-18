@@ -36,6 +36,7 @@ def parser2dict():
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
     parser.add_argument('--dataset_order', type=str, default=['BP4D', 'DISFA', 'RAF-DB', 'AffectNet'])
+    # parser.add_argument('--dataset_order', type=str, default=['RAF-DB'])
     parser.add_argument('--outdir', type=str, default='save/seen/balanced')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
@@ -51,6 +52,10 @@ def parser2dict():
     parser.add_argument('--zeroPad', type=float, default=1e-5)
 
     parser.add_argument('--priori_alpha', type=float, default=0.5)
+
+    parser.add_argument('--isFocal_Loss', type=bool, default=True)
+    parser.add_argument('--isClass_Weight', type=bool, default=False)
+    parser.add_argument('--isClass_Weight_decay', type=bool, default=False)
 
     config, unparsed = parser.parse_known_args()
     cfg = edict(config.__dict__)
@@ -125,7 +130,7 @@ def main(conf):
         input_rules = all_info['val_input_info']['seen_priori_rules']
         
         summary_writer = SummaryWriter(cur_outdir)
-        conf.lr_relation = 1e-4
+        conf.lr_relation = -1
         output_rules, train_records, model = learn_rules(conf, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         train_info = {}
@@ -172,7 +177,7 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.outdir = os.path.join(conf.outdir, cur_day)
+    conf.outdir = os.path.join(conf.outdir, cur_day+'_v2')
 
     global device
     conf.gpu = 1

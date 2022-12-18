@@ -1,0 +1,25 @@
+2022-11-24 09:04:17,866:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['AffectNet']                 
+                   device: cuda:0                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 0                             
+           isClass_Weight: True                          
+     isClass_Weight_decay: False                         
+             isFocal_Loss: False                         
+             lr_decay_idx: 20000                         
+              lr_relation: 0.0001                        
+               manualSeed: 0                             
+              num_workers: 16                            
+                   outdir: save/rule/2022-11-24/LR_0.0001_CELoss_wClassWeight
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-11-24 09:04:17,866:INFO: writting logs to file save/rule/2022-11-24/LR_0.0001_CELoss_wClassWeight/train.log
+2022-11-24 09:04:21,256:INFO: {'init_lr 0.0001'}
+2022-11-24 10:06:49,967:INFO: {'Dataset: AffectNet train_rules_loss: 2.96307, train_rules_acc: 83.81, val_rules_loss: 1.50815, val_rules_acc: 52.94'}
+2022-11-24 10:06:49,968:INFO: {'EMO Rules Train Acc-list:'}
+2022-11-24 10:06:49,968:INFO: {'happy: 99.06, sad: 52.59, fear: 0.42, anger: 53.15, surprise: 99.61, disgust: 4.01'}
+2022-11-24 10:06:49,968:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-24 10:06:49,968:INFO: {'happy: 100.00, sad: 65.43, fear: 0.68, anger: 47.66, surprise: 100.00, disgust: 2.20'}

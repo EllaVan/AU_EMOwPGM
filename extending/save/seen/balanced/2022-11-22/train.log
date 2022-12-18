@@ -1,0 +1,41 @@
+2022-11-22 21:50:24,817:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D', 'DISFA', 'RAF-DB', 'AffectNet']
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/seen/balanced/2022-11-22 
+             priori_alpha: 0.5                           
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-11-22 21:50:24,817:INFO: writting logs to file save/seen/balanced/2022-11-22/train.log
+2022-11-22 21:50:26,093:INFO: {'init_lr 0.0001'}
+2022-11-22 21:58:16,254:INFO: {'Dataset: BP4D train_rules_loss: 0.28155, train_rules_acc: 80.77, val_rules_loss: 0.89611, val_rules_acc: 84.07'}
+2022-11-22 21:58:16,254:INFO: {'EMO Rules Train Acc-list:'}
+2022-11-22 21:58:16,254:INFO: {'happy: 99.98, sad: 29.68, anger: 89.73, surprise: 88.55'}
+2022-11-22 21:58:16,254:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-22 21:58:16,254:INFO: {'happy: 100.00, sad: 38.52, anger: 91.23, surprise: 95.42'}
+2022-11-22 21:58:16,753:INFO: {'init_lr 0.0001'}
+2022-11-22 22:02:21,347:INFO: {'Dataset: DISFA train_rules_loss: 0.18179, train_rules_acc: 95.99, val_rules_loss: 0.78127, val_rules_acc: 96.16'}
+2022-11-22 22:02:21,347:INFO: {'EMO Rules Train Acc-list:'}
+2022-11-22 22:02:21,348:INFO: {'happy: 82.27, sad: 99.54, anger: 99.98, surprise: 95.22'}
+2022-11-22 22:02:21,348:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-22 22:02:21,348:INFO: {'happy: 78.74, sad: 100.00, anger: 100.00, surprise: 97.99'}
+2022-11-22 22:02:21,447:INFO: {'init_lr 0.0001'}
+2022-11-22 22:03:49,867:INFO: {'Dataset: RAF-DB train_rules_loss: 0.28547, train_rules_acc: 77.97, val_rules_loss: 0.94755, val_rules_acc: 79.61'}
+2022-11-22 22:03:49,867:INFO: {'EMO Rules Train Acc-list:'}
+2022-11-22 22:03:49,867:INFO: {'happy: 96.38, sad: 13.22, anger: 94.98, surprise: 99.27'}
+2022-11-22 22:03:49,867:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-22 22:03:49,867:INFO: {'happy: 99.23, sad: 10.90, anger: 95.68, surprise: 100.00'}
+2022-11-22 22:03:50,370:INFO: {'init_lr 0.0001'}
+2022-11-22 23:02:38,872:INFO: {'Dataset: AffectNet train_rules_loss: 0.19041, train_rules_acc: 88.38, val_rules_loss: 0.94807, val_rules_acc: 77.92'}
+2022-11-22 23:02:38,872:INFO: {'EMO Rules Train Acc-list:'}
+2022-11-22 23:02:38,872:INFO: {'happy: 99.39, sad: 57.91, anger: 49.36, surprise: 99.66'}
+2022-11-22 23:02:38,872:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-22 23:02:38,872:INFO: {'happy: 100.00, sad: 54.52, anger: 54.44, surprise: 99.77'}

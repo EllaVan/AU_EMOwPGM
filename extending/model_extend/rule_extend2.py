@@ -163,8 +163,7 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
         for changing_item in args:
             change_weight2 = change_weight2 * changing_item
         init_lr = init_lr * change_weight2
-    
-    # criterion = nn.CrossEntropyLoss()
+        
     loss_weight = []
     cl_num = []
     pre_weight = train_size/len(EMO)
@@ -177,11 +176,21 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
     for each_weighti in range(len(cl_num)):
         cl_num[each_weighti] = 1-cl_num[each_weighti]/t1 # 此时init_lr=0.01结果还行
     '''
-    for each_weighti in range(len(cl_num)):
-        # Focal_Loss中的alpha参数越大，标签为这一类的loss值越大，为了降低样本数量多的类别的loss影响，需要为样本量多的类别赋小权重
-        cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
-    criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
+    
+    # for each_weighti in range(len(cl_num)):
+    #     # Focal_Loss中的alpha参数越大，标签为这一类的loss值越大，为了降低样本数量多的类别的loss影响，需要为样本量多的类别赋小权重
+    #     cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
+    
+    t2 = sum(cl_num[:num_seen])
+    for each_weighti, each_weight in enumerate(cl_num):
+        # (扩展EMO版本)Focal_Loss中的alpha参数越大，标签为这一类的loss值越大，为了降低样本数量多的类别的loss影响，需要为样本量多的类别赋小权重
+        if each_weighti < num_seen:
+            cl_num[each_weighti] = (t1-t2)/t1
+        else:
+            cl_num[each_weighti] = (t1-cl_num[each_weighti])/t1
 
+    criterion = MultiClassFocalLossWithAlpha(alpha=cl_num).to(device)
+    # criterion = nn.CrossEntropyLoss()
 
     acc_record = []
     err_record = []
@@ -194,6 +203,7 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
     infostr = {'init_lr {}'.format(init_lr)}
     logging.info(infostr)
     update.train()
+    generate_flag = False
     for idx in range(labelsAU.shape[0]):
         torch.cuda.empty_cache()
         adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
@@ -216,24 +226,25 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
 
             optim_graph.zero_grad()
             
-            # pre_train_idx = 0#.66*len(labelsEMO)
+            pre_train_idx = 0.66*len(labelsEMO)
             pre_train_idx = conf.pre_train_idx
             if idx < pre_train_idx:
                 # adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
                 cur_prob, cur_temp_prob, _, _, _ = update(prob_all_au, is_pre_train=True)
                 cur_pred = torch.argmax(cur_prob)
-                cls_loss = criterion(cur_prob, emo_label-4)
+                cls_loss = criterion(cur_prob, emo_label-num_seen)
                 cls_record.append(cls_loss.item())
                 summary_writer.add_scalar('train_cls', np.array(cls_record).mean(), idx)
                 err = cls_loss
                 acc = torch.eq(cur_pred, emo_label-4).sum().item()
                 confu_m = confusion_matrix((cur_pred+4).data.cpu().numpy().reshape(1,).tolist(), labels=emo_label.data.cpu().numpy().tolist(), conf_matrix=confu_m)
             else:
+                # keep_lr(optim_graph, init_lr)
                 cur_prob, cur_temp_prob, cur_seen_prob, cur_seen_temp_prob, _ = update(prob_all_au)
                 cur_pred = torch.argmax(cur_prob)
 
                 seen_trained_prob, seen_trained_temp_prob, _, _, _ = seen_trained_model(prob_all_au)
-                # seen_trained_prob = torch.zeros_like(seen_trained_prob)
+                # seen_trained_temp_prob = torch.zeros_like(seen_trained_prob)
                 # KL_loss = cri_KL(update.EMO2AU_cpt[:num_seen, :], target_seen)
                 # KL_loss = torch.abs(cri_KL(cur_prob[:, :num_seen], seen_trained_prob))
                 # KL_loss =cri_KL(cur_temp_prob[:, :num_seen], seen_trained_temp_prob)
@@ -247,17 +258,16 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
                 if emo_label < num_seen:
                     err = cls_loss
                 else:
-                    err = cls_loss + 1 * KL_loss
-                # err = cls_loss + 1 * KL_loss
+                    err = cls_loss + 0.5 * KL_loss
+                # err = cls_loss + 0.5 * KL_loss
                 acc = torch.eq(cur_pred, emo_label).sum().item()
                 confu_m = confusion_matrix(cur_pred.data.cpu().numpy().reshape(1,).tolist(), labels=emo_label.data.cpu().numpy().tolist(), conf_matrix=confu_m)
 
-                if emo_label >= num_seen:
-                    update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
-                else:
-                    update = crop_EMO2AU(conf, update)
-                # update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
-
+                # if emo_label >= num_seen:
+                #     update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
+                # else:
+                #     update = crop_EMO2AU(conf, update)
+            
             err_record.append(err.item())
             acc_record.append(acc)
             summary_writer.add_scalar('train_err', np.array(err_record).mean(), idx)
@@ -265,7 +275,7 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
             
             err.backward()
             optim_graph.step()
-            # update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
+            update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
             del prob_all_au, cur_prob, cur_pred, err, acc
 
         # if idx > 10000:

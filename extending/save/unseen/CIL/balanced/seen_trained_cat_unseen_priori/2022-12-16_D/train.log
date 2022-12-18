@@ -1,0 +1,29 @@
+2022-12-16 20:50:18,792:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['DISFA', 'BP4D']             
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-16_v3
+          pre_train_alpha: 0.66                          
+                 rule_dir: save/seen                     
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-16 20:50:18,792:INFO: writting logs to file save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-16_v3/train.log
+2022-12-16 20:50:20,510:INFO: {'init_lr 0.1'}
+2022-12-16 20:57:52,810:INFO: {'Dataset: DISFA train_rules_loss: 0.28311, train_rules_acc: 94.84, val_rules_loss: 1.28736, val_rules_acc: 74.78'}
+2022-12-16 20:57:52,810:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-16 20:57:52,810:INFO: {'happy: 1.17, sad: 7.30, anger: 99.88, surprise: 77.79, fear: 98.49, disgust: 98.95'}
+2022-12-16 20:57:53,799:INFO: {'init_lr 0.1'}
+2022-12-16 21:07:40,893:INFO: {'Dataset: BP4D train_rules_loss: 0.37809, train_rules_acc: 82.70, val_rules_loss: 1.67404, val_rules_acc: 36.77'}
+2022-12-16 21:07:40,893:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-16 21:07:40,893:INFO: {'happy: 1.50, sad: 0.00, anger: 4.40, surprise: 0.34, fear: 99.49, disgust: 98.25'}

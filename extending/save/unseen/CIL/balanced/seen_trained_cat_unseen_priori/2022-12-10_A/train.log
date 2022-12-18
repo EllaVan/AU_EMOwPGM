@@ -1,0 +1,37 @@
+2022-12-10 14:43:47,029:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D', 'RAF-DB', 'DISFA', 'AffectNet']
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-10_v2
+          pre_train_alpha: 0.66                          
+                 rule_dir: save/seen                     
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-10 14:43:47,029:INFO: writting logs to file save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-10_v2/train.log
+2022-12-10 14:43:48,768:INFO: {'init_lr 0.0001'}
+2022-12-10 14:54:51,301:INFO: {'Dataset: BP4D val_rules_loss: 0.51397, val_rules_acc: 64.64, val_rules_loss: 1.59063, val_rules_acc: 44.43'}
+2022-12-10 14:54:51,301:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-10 14:54:51,302:INFO: {'happy: 99.76, sad: 38.95, anger: 7.39, surprise: 72.72, fear: 3.81, disgust: 74.07'}
+2022-12-10 14:54:51,440:INFO: {'init_lr 0.0001'}
+2022-12-10 14:55:21,230:INFO: {'Dataset: RAF-DB val_rules_loss: 0.54978, val_rules_acc: 60.40, val_rules_loss: 1.32542, val_rules_acc: 71.62'}
+2022-12-10 14:55:21,230:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-10 14:55:21,231:INFO: {'happy: 99.91, sad: 7.26, anger: 72.84, surprise: 99.69, fear: 0.00, disgust: 26.75'}
+2022-12-10 14:55:22,057:INFO: {'init_lr 0.0001'}
+2022-12-10 15:04:03,203:INFO: {'Dataset: DISFA val_rules_loss: 0.37847, val_rules_acc: 88.79, val_rules_loss: 1.25757, val_rules_acc: 78.10'}
+2022-12-10 15:04:03,203:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-10 15:04:03,203:INFO: {'happy: 12.04, sad: 99.46, anger: 100.00, surprise: 30.59, fear: 80.08, disgust: 99.95'}
+2022-12-10 15:04:03,704:INFO: {'init_lr 0.0001'}
+2022-12-10 15:07:54,076:INFO: {'Dataset: AffectNet val_rules_loss: 0.53658, val_rules_acc: 65.90, val_rules_loss: 1.48865, val_rules_acc: 54.25'}
+2022-12-10 15:07:54,077:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-10 15:07:54,077:INFO: {'happy: 98.95, sad: 41.30, anger: 53.74, surprise: 81.14, fear: 21.17, disgust: 26.43'}

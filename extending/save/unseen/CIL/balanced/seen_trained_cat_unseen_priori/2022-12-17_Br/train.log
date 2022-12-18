@@ -1,0 +1,28 @@
+用的seen_data + unseen_data, lr = 0.1, 普通训练方式
+2022-12-17 20:30:17,397:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D', 'DISFA']             
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-17_v3
+          pre_train_alpha: 0.66                          
+                 rule_dir: save/seen                     
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-17 20:30:17,398:INFO: writting logs to file save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-17_v3/train.log
+2022-12-17 20:30:19,280:INFO: {'init_lr 0.1'}
+2022-12-17 20:43:14,559:INFO: {'Dataset: BP4D train_rules_loss: 0.65728, train_rules_acc: 68.01, val_rules_loss: 1.29782, val_rules_acc: 75.32'}
+2022-12-17 20:43:14,559:INFO: {'EMO Rules Train Acc-list:'}
+2022-12-17 20:43:14,559:INFO: {'happy: 88.25, sad: 64.38, anger: 71.84, surprise: 22.69, fear: 79.86, disgust: 38.86'}
+2022-12-17 20:43:14,560:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-17 20:43:14,560:INFO: {'happy: 99.46, sad: 97.17, anger: 66.86, surprise: 9.01, fear: 94.33, disgust: 35.58'}

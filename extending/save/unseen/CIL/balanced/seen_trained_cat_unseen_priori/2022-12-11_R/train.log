@@ -1,0 +1,25 @@
+2022-12-11 23:24:57,529:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['RAF-DB', 'BP4D', 'DISFA']   
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-11_v2
+          pre_train_alpha: 0.66                          
+                 rule_dir: save/seen                     
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-11 23:24:57,530:INFO: writting logs to file save/unseen/CIL/balanced/seen_trained_cat_unseen_priori/2022-12-11_v2/train.log
+2022-12-11 23:24:58,537:INFO: {'init_lr 1e-05'}
+2022-12-11 23:25:53,192:INFO: {'Dataset: RAF-DB train_rules_loss: 2.21733, train_rules_acc: 41.82, val_rules_loss: 1.23955, val_rules_acc: 79.74'}
+2022-12-11 23:25:53,192:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-11 23:25:53,192:INFO: {'happy: 99.91, sad: 59.62, anger: 64.20, surprise: 100.00, fear: 0.00, disgust: 0.64'}

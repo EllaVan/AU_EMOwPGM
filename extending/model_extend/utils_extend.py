@@ -61,7 +61,8 @@ def get_config(cfg):
     cfg.update(datasets_cfg)
     return cfg
 
-def generate_seen_sample(conf, EMO2AU_cpt, EMO, topk=8):
+def generate_seen_sample(conf, rules, topk=8):
+    EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = rules
     loc1 = conf.loc1
     loc2 = conf.loc2
     refer_loc = list(range(len(loc1)))
@@ -90,9 +91,77 @@ def generate_seen_sample(conf, EMO2AU_cpt, EMO, topk=8):
         next_least_sampleAU[:, lowk_idx] = 1
         samplesAU.append(least_sampleAU)
         samplesAU.append(next_least_sampleAU)
+
+        list_topk_idx = list(topk_idx)
+        list_lowk_idx = list(lowk_idx)
+        for t_sample in range(1, 5):
+            sample_AU_t = torch.zeros((1, num_occu_AU))
+            top_key_size = random.randint(3, topk+1)
+            low_key_size = random.randint(1, lowk+1)
+            top_key1 = random.sample(list_topk_idx, top_key_size-1)
+            sample_AU_t[:, top_key1] = 1
+            low_key1 = random.sample(list_lowk_idx, low_key_size-1)
+            sample_AU_t[:, low_key1] = 1
+            samplesEMO.append(sampleEMO)
+            samplesAU.append(sample_AU_t)
+
     # samplesEMO = torch.concat(samplesEMO)
     samplesAU = torch.concat(samplesAU)
     return samplesAU, samplesEMO
+
+def generate_seen_sample_v2(conf, rules, topk=8):
+    EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = rules
+    AU2EMO_cpt = np.zeros(EMO2AU_cpt.T.shape)
+    for i, au in enumerate(AU):
+        for j, emo in enumerate(EMO):
+            AU2EMO_cpt[i, j] = EMO2AU_cpt[j, i] / len(EMO) / prob_AU[i] # 注意此处的 /len(EMO) 表达的其实是p(EMO)，此处存在各个类别均匀分布的假设
+
+    loc1 = conf.loc1
+    loc2 = conf.loc2
+    refer_loc = list(range(len(loc1)))
+    num_occu_AU = len(loc1)
+    samplesEMO = []
+    samplesAU = []
+    for emo_i, emo in enumerate(EMO):
+        sampleEMO = torch.from_numpy(np.array(emo_i).reshape(1, ))
+        samplesEMO.append(sampleEMO)
+        samplesEMO.append(sampleEMO)
+        
+        least_sampleAU = torch.zeros((1, num_occu_AU))
+        next_least_sampleAU = torch.zeros((1, num_occu_AU))
+
+        sort_AU2EMO = AU2EMO_cpt[loc1, emo_i].copy()
+        cur_AU2EMO = np.argsort(-sort_AU2EMO)
+        topk_idx = cur_AU2EMO[:topk]
+        half_topk_idx = cur_AU2EMO[:int(topk/2)]
+        lowk = len(loc1) - topk
+        lowk_idx = cur_AU2EMO[-lowk:]
+        half_lowk_idx = cur_AU2EMO[-lowk:-int(lowk/2)]
+
+        least_sampleAU[:, topk_idx] = 1
+        least_sampleAU[:, half_lowk_idx] = 1
+        next_least_sampleAU[:, half_topk_idx] = 1
+        next_least_sampleAU[:, lowk_idx] = 1
+        samplesAU.append(least_sampleAU)
+        samplesAU.append(next_least_sampleAU)
+
+        list_topk_idx = list(topk_idx)
+        list_lowk_idx = list(lowk_idx)
+        for t_sample in range(1, 5):
+            sample_AU_t = torch.zeros((1, num_occu_AU))
+            top_key_size = random.randint(3, topk+1)
+            low_key_size = random.randint(1, lowk+1)
+            top_key1 = random.sample(list_topk_idx, top_key_size-1)
+            sample_AU_t[:, top_key1] = 1
+            low_key1 = random.sample(list_lowk_idx, low_key_size-1)
+            sample_AU_t[:, low_key1] = 1
+            samplesEMO.append(sampleEMO)
+            samplesAU.append(sample_AU_t)
+
+    # samplesEMO = torch.concat(samplesEMO)
+    samplesAU = torch.concat(samplesAU)
+    return samplesAU, samplesEMO        
+
 
 def sample_seen(EMO, train_inputAU, train_inputEMO, ori_samplek):
     samplesEMO = []
@@ -171,8 +240,8 @@ def get_complete_rule(seen_rules, unseen_rules):
     # AU_cnt = prob_AU * num_all_img
     # AU_cpt = num_unseen/(num_unseen+num_seen)*unseen_AU_cpt + num_seen/(num_unseen+num_seen)*seen_AU_cpt
 
-    # complete_rule = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
-    complete_rule = EMO2AU_cpt, seen_AU_cpt, seen_prob_AU, seen_ori_size, seen_num_all_img, seen_AU_ij_cnt, seen_AU_cnt, EMO, AU
+    complete_rule = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
+    # complete_rule = EMO2AU_cpt, seen_AU_cpt, seen_prob_AU, seen_ori_size, seen_num_all_img, seen_AU_ij_cnt, seen_AU_cnt, EMO, AU
     return complete_rule
 
 def get_cat_rule(seen_rules, unseen_rules):

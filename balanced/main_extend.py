@@ -1,5 +1,5 @@
 '''
-伪造样本
+整图更新
 '''
 import os
 import sys
@@ -25,7 +25,7 @@ from tensorboardX import SummaryWriter
 
 from conf import ensure_dir, set_logger
 from model_extend.utils_extend import *
-from model_extend.rule_extend import UpdateGraph
+from model_extend.rule_extend2 import UpdateGraph
 from model_extend.rule_extend2 import learn_rules, test_rules, generate_seen_sample
 # from models.rule_model import learn_rules, test_rules
 from losses import *
@@ -36,7 +36,8 @@ def parser2dict():
     # ----------------------basic settings------------------------
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
-    parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'DISFA', 'AffectNet'])
+    # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'DISFA', 'AffectNet'])
+    parser.add_argument('--dataset_order', type=str, default=['BP4D', 'DISFA'])
     parser.add_argument('--outdir', type=str, default='save/unseen/CIL')
     parser.add_argument('--rule_dir', type=str, default='save/seen')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
@@ -85,32 +86,32 @@ def main(conf):
         seen_train_inputEMO = data_info['train_input_info']['seen_EMO']
         unseen_train_inputAU = data_info['train_input_info']['unseen_AU']
         unseen_train_inputEMO = data_info['train_input_info']['unseen_EMO']+num_seen
-        # train_inputAU = torch.cat((seen_train_inputAU, unseen_train_inputAU))
-        # train_inputEMO = torch.cat((seen_train_inputEMO, unseen_train_inputEMO))
+        train_inputAU = torch.cat((seen_train_inputAU, unseen_train_inputAU))
+        train_inputEMO = torch.cat((seen_train_inputEMO, unseen_train_inputEMO))
         # train_inputAU = seen_train_inputAU
         # train_inputEMO = seen_train_inputEMO
         # train_inputAU = unseen_train_inputAU
         # train_inputEMO = unseen_train_inputEMO
         
-        samplesAU, samplesEMO = generate_seen_sample(conf, seen_trained_rules[0], seen_trained_rules[-2])
-        repeat_size = unseen_train_inputEMO.shape[0] // len(samplesEMO)
-        samplesAU = samplesAU.repeat(repeat_size, 1)
-        samplesEMO = torch.concat(samplesEMO * repeat_size)
+        # samplesAU, samplesEMO = generate_seen_sample(conf, seen_trained_rules[0], seen_trained_rules[-2])
+        # repeat_size = unseen_train_inputEMO.shape[0] // len(samplesEMO)
+        # samplesAU = samplesAU.repeat(repeat_size, 1)
+        # samplesEMO = torch.concat(samplesEMO * repeat_size)
 
-        # conf.pre_train_alpha = 0.66
-        unseen_train_inputAU, unseen_train_inputEMO = shuffle_input(unseen_train_inputAU, unseen_train_inputEMO)
-        pre_train_idx = int(conf.pre_train_alpha*unseen_train_inputEMO.shape[0])
-        conf.pre_train_idx = pre_train_idx
-        part1_unseen_trainAU = unseen_train_inputAU[:pre_train_idx, :]
-        part1_unseen_trainEMO = unseen_train_inputEMO[:pre_train_idx]
-        part2_unseen_trainAU = unseen_train_inputAU[pre_train_idx:, :]
-        part2_unseen_trainEMO = unseen_train_inputEMO[pre_train_idx:]
-        part1_unseen_trainAU, part1_unseen_trainEMO = shuffle_input(part1_unseen_trainAU, part1_unseen_trainEMO)
-        part2_unseen_trainAU = torch.cat((samplesAU, part2_unseen_trainAU))
-        part2_unseen_trainEMO = torch.cat((samplesEMO, part2_unseen_trainEMO))
-        part2_unseen_trainAU, part2_unseen_trainEMO = shuffle_input(part2_unseen_trainAU, part2_unseen_trainEMO)
-        train_inputAU = torch.cat((part1_unseen_trainAU, part2_unseen_trainAU))
-        train_inputEMO = torch.cat((part1_unseen_trainEMO, part2_unseen_trainEMO))
+        conf.pre_train_alpha = 0 # 0.66
+        # unseen_train_inputAU, unseen_train_inputEMO = shuffle_input(unseen_train_inputAU, unseen_train_inputEMO)
+        # pre_train_idx = int(conf.pre_train_alpha*unseen_train_inputEMO.shape[0])
+        # conf.pre_train_idx = pre_train_idx
+        # part1_unseen_trainAU = unseen_train_inputAU[:pre_train_idx, :]
+        # part1_unseen_trainEMO = unseen_train_inputEMO[:pre_train_idx]
+        # part2_unseen_trainAU = unseen_train_inputAU[pre_train_idx:, :]
+        # part2_unseen_trainEMO = unseen_train_inputEMO[pre_train_idx:]
+        # part1_unseen_trainAU, part1_unseen_trainEMO = shuffle_input(part1_unseen_trainAU, part1_unseen_trainEMO)
+        # part2_unseen_trainAU = torch.cat((samplesAU, part2_unseen_trainAU))
+        # part2_unseen_trainEMO = torch.cat((samplesEMO, part2_unseen_trainEMO))
+        # part2_unseen_trainAU, part2_unseen_trainEMO = shuffle_input(part2_unseen_trainAU, part2_unseen_trainEMO)
+        # train_inputAU = torch.cat((part1_unseen_trainAU, part2_unseen_trainAU))
+        # train_inputEMO = torch.cat((part1_unseen_trainEMO, part2_unseen_trainEMO))
 
         # samplek = int(unseen_train_inputEMO.shape[0]/num_unseen)
         # samplek = 1000
@@ -122,7 +123,7 @@ def main(conf):
         # train_inputAU = torch.cat((samplesAU, unseen_train_inputAU))
         # train_inputEMO = torch.cat((samplesEMO, unseen_train_inputEMO))
 
-        # train_inputAU, train_inputEMO = shuffle_input(train_inputAU, train_inputEMO)
+        train_inputAU, train_inputEMO = shuffle_input(train_inputAU, train_inputEMO)
 
         train_rules_input = (train_inputAU, train_inputEMO)
         val_inputAU = torch.cat((data_info['val_input_info']['seen_AU'], data_info['val_input_info']['unseen_AU']))

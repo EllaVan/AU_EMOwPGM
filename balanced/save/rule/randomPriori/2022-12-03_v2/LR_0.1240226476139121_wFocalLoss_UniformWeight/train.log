@@ -1,0 +1,25 @@
+2022-12-03 17:07:36,412:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D']                      
+                   device: cuda:2                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 2                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+             lr_decay_idx: 20000                         
+              lr_relation: 0.1240226476139121            
+               manualSeed: 0                             
+              num_workers: 16                            
+                   outdir: save/rule/randomPriori/2022-12-03_v2/LR_0.1240226476139121_wFocalLoss_UniformWeight
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-03 17:07:36,413:INFO: writting logs to file save/rule/randomPriori/2022-12-03_v2/LR_0.1240226476139121_wFocalLoss_UniformWeight/train.log
+2022-12-03 17:07:38,927:INFO: {'init_lr 0.1240226476139121'}
+2022-12-03 17:22:30,094:INFO: {'Dataset: BP4D train_rules_loss: 0.95369, train_rules_acc: 32.88, val_rules_loss: 1.66172, val_rules_acc: 36.85'}
+2022-12-03 17:22:30,095:INFO: {'EMO Rules Train Acc-list:'}
+2022-12-03 17:22:30,095:INFO: {'happy: 42.24, sad: 43.40, fear: 38.26, anger: 23.19, surprise: 6.14, disgust: 30.12'}
+2022-12-03 17:22:30,095:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-03 17:22:30,095:INFO: {'happy: 77.80, sad: 58.87, fear: 36.41, anger: 0.02, surprise: 9.93, disgust: 25.64'}

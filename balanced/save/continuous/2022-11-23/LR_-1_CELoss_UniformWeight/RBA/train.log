@@ -1,0 +1,32 @@
+2022-11-23 17:17:39,143:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+                  dataset: RAF-DB                        
+            dataset_order: ['RAF-DB', 'BP4D', 'AffectNet']
+             dataset_path: /media/data1/wf/AU_EMOwPGM/codes/dataset/RAF-DB/RAF_subject_independent.pkl
+dataset_path_subject_independent: /media/data1/wf/AU_EMOwPGM/codes/dataset/RAF-DB/RAF_subject_independent.pkl
+                   device: cuda:2                        
+                 evaluate: False                         
+                file_list: epoch4_model_fold0.pth        
+                     fold: 0                             
+                      gpu: 2                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: False                         
+                     loc1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                     loc2: [15, 16]                      
+             lr_decay_idx: 20000                         
+              lr_relation: -1                            
+               manualSeed: None                          
+             neighbor_num: 4                             
+              num_classes: 17                            
+              num_workers: 16                            
+                   outdir: save/continuous/2022-11-23/LR_-1_CELoss_UniformWeight/RBA
+             priori_alpha: 0.5                           
+                save_path: save/continuous               
+              source_list: ['predsAU_record', 'labelsEMO_record']
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-11-23 17:17:39,143:INFO: writting logs to file save/continuous/2022-11-23/LR_-1_CELoss_UniformWeight/RBA/train.log
+2022-11-23 17:17:39,145:INFO: {'The priori Dataset RAF-DB: The training length is 9747, The test length is 2388'}
+2022-11-23 17:17:39,528:INFO: {'Dataset BP4D: The training length is 72861, The test length is 31383'}

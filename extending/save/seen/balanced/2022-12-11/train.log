@@ -1,0 +1,26 @@
+2022-12-11 22:49:36,718:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['RAF-DB']                    
+                   device: cuda:1                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 1                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+               manualSeed: None                          
+              num_workers: 16                            
+                   outdir: save/seen/balanced/2022-12-11 
+             priori_alpha: 0.5                           
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-11 22:49:36,719:INFO: writting logs to file save/seen/balanced/2022-12-11/train.log
+2022-12-11 22:49:37,714:INFO: {'init_lr 0.1362424721097838'}
+2022-12-11 22:50:59,475:INFO: {'Dataset: RAF-DB train_rules_loss: 0.22502, train_rules_acc: 87.40, val_rules_loss: 0.85146, val_rules_acc: 88.37'}
+2022-12-11 22:50:59,475:INFO: {'EMO Rules Train Acc-list:'}
+2022-12-11 22:50:59,476:INFO: {'happy: 97.90, sad: 77.81, anger: 21.95, surprise: 99.27'}
+2022-12-11 22:50:59,476:INFO: {'EMO Rules Val Acc-list:'}
+2022-12-11 22:50:59,476:INFO: {'happy: 100.00, sad: 59.40, anger: 64.81, surprise: 100.00'}

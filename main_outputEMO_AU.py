@@ -179,7 +179,7 @@ def main(conf):
     EMO = train_loader.dataset.EMO
     AU = train_loader.dataset.AU
     dataset_info = infolist(EMO, AU)
-    conf.num_classesAU = len(AU)
+    conf.num_classesAU = len(conf.loc1)
     #------------------------------Data Preparation--------------------------
 
     #---------------------------------AU Setting-----------------------------
@@ -235,7 +235,10 @@ def main(conf):
         lr_EMO = optimizer_EMO.param_groups[0]['lr']
         logging.info("Epoch: [{} | {} LR_EMO: {}, LR_RULES: {} ]".format(epoch + 1, conf.epochs, lr_EMO, conf.lr_relation))
         
-        train_info_EMO, train_input_info = train(conf, net_AU, net_EMO, train_loader, optimizer_AU, optimizer_EMO, epoch, criterion_AU, scheduler_EMO)
+        # train_info_EMO, train_input_info = train(conf, net_AU, net_EMO, train_loader, optimizer_AU, optimizer_EMO, epoch, criterion_AU, scheduler_EMO)
+        # train_EMO_loss, train_EMO_acc, train_confuse_EMO = train_info_EMO
+
+        train_info_EMO, train_input_info = val(net_AU, net_EMO, train_loader, criterion_AU)
         train_EMO_loss, train_EMO_acc, train_confuse_EMO = train_info_EMO
 
         val_EMO_return, val_input_info = val(net_AU, net_EMO, test_loader, criterion_AU)
@@ -273,7 +276,7 @@ if __name__=='__main__':
     conf = parser2dict()
     conf.dataset = 'RAF-DB-compound'
 
-    conf.gpu = 2
+    conf.gpu = 0
     # conf.exp_name = 'Test'
     
     conf.learning_rate_AU = 0.0001

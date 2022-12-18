@@ -1,0 +1,45 @@
+2022-11-23 19:58:37,913:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+                 change_w: None                          
+                  dataset: BP4D                          
+            dataset_order: ['BP4D', 'RAF-DB']            
+             dataset_path: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+dataset_path_subject_dependent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_dependent.pkl
+dataset_path_subject_independent: /media/data1/wf/AU_EMOwPGM/codes/dataset/BP4D/BP4D_subject_independent.pkl
+                   device: cuda:0                        
+                 evaluate: False                         
+                file_list: epoch4_model_fold0.pth        
+                     fold: 0                             
+                      gpu: 0                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+                     loc1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+                     loc2: [15, 16]                      
+                       lr: 0.001                         
+             lr_decay_idx: 20000                         
+              lr_relation: -1                            
+               manualSeed: None                          
+             neighbor_num: 4                             
+              num_classes: 17                            
+              num_workers: 16                            
+                   outdir: save/hunhe/balanced/2022-11-23_BR
+             priori_alpha: 0.5                           
+                save_path: save/hunhe/balanced           
+              source_list: ['labelsAU_record', 'labelsEMO_record']
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-11-23 19:58:37,913:INFO: writting logs to file save/hunhe/balanced/2022-11-23_BR/train.log
+2022-11-23 19:58:37,914:INFO: {'Dataset BP4D: The training length is 72861, The test length is 31383'}
+2022-11-23 19:58:38,037:INFO: {'Dataset RAF-DB: The training length is 9747, The test length is 2388'}
+2022-11-23 19:58:40,130:INFO: {'init_lr 0.01643639828489757'}
+2022-11-23 20:33:02,978:INFO: {'train_rules_loss: 0.58097, train_rules_acc: 76.90, val_rules_loss: 1.26431, val_rules_acc: 79.01'}
+2022-11-23 20:33:02,978:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-23 20:33:02,979:INFO: {'happy: 99.98, sad: 66.51, fear: 88.23, anger: 81.80, surprise: 48.14, disgust: 53.30'}
+2022-11-23 20:38:41,135:INFO: {'Dataset BP4D: val_rules_loss: 1.25729, val_rules_acc: 79.87'}
+2022-11-23 20:38:41,136:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-23 20:38:41,136:INFO: {'happy: 100.00, sad: 73.65, fear: 88.43, anger: 82.61, surprise: 46.31, disgust: 54.11'}
+2022-11-23 20:39:06,927:INFO: {'Dataset RAF-DB: val_rules_loss: 1.33820, val_rules_acc: 69.97'}
+2022-11-23 20:39:06,927:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-23 20:39:06,928:INFO: {'happy: 99.91, sad: 17.52, fear: 72.60, anger: 55.56, surprise: 59.94, disgust: 36.94'}

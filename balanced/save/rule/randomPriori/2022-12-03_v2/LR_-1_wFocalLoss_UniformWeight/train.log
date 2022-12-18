@@ -1,0 +1,20 @@
+2022-12-03 16:41:19,062:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['BP4D']                      
+                   device: cuda:0                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 0                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: True                          
+             lr_decay_idx: 20000                         
+              lr_relation: -1                            
+               manualSeed: 0                             
+              num_workers: 16                            
+                   outdir: save/rule/randomPriori/2022-12-03_v2/LR_-1_wFocalLoss_UniformWeight
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-12-03 16:41:19,063:INFO: writting logs to file save/rule/randomPriori/2022-12-03_v2/LR_-1_wFocalLoss_UniformWeight/train.log
+2022-12-03 16:41:21,725:INFO: {'init_lr 0.0'}

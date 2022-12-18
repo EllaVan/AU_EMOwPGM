@@ -195,6 +195,10 @@ def adjust_rules_lr_v2(optimizer, init_lr, iteration, num_iter):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
+def keep_lr(optimizer, init_lr):
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = init_lr
+
 def adjust_loss_weight(init_weight, iteration, num_iter):
     current_iter = iteration
     max_iter = num_iter
@@ -350,6 +354,19 @@ def shuffle_input(inputAU, inputEMO):
     inputAU = torch.stack(b)
     inputEMO = torch.stack(c)
     return inputAU, inputEMO
+
+def randomPriori(input_rules):
+    EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU = input_rules 
+    EMO2AU_cpt = np.random.random(EMO2AU_cpt.shape)
+    AU_cpt = np.zeros(AU_cpt.shape)
+    for i, j in enumerate(AU[:-2]):
+        prob_AU[i] = np.sum(EMO2AU_cpt[:, i]) / (len(EMO))
+    ori_size = 0
+    num_all_img = ori_size
+    AU_ij_cnt = np.zeros(AU_ij_cnt.shape)
+    AU_cnt = np.zeros_like(AU_cnt)
+    output_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
+    return output_rules
 
 
 

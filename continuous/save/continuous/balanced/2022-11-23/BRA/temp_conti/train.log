@@ -1,0 +1,21 @@
+2022-11-23 19:50:58,250:INFO: ----------------- Options ---------------
+                 AUthresh: 0.6                           
+               batch_size: 128                           
+            dataset_order: ['RAF-DB']                    
+                   device: cuda:0                        
+                 evaluate: False                         
+                     fold: 0                             
+                      gpu: 0                             
+           isClass_Weight: False                         
+     isClass_Weight_decay: False                         
+             isFocal_Loss: False                         
+             lr_decay_idx: 20000                         
+              lr_relation: 0.001                         
+               manualSeed: 0                             
+              num_workers: 16                            
+                   outdir: /media/data1/wf/AU_EMOwPGM/codes/continuous/save/continuous/balanced/2022-11-23/BRA/temp_conti
+                  zeroPad: 1e-05                         
+----------------- End -------------------
+2022-11-23 19:50:58,250:INFO: writting logs to file /media/data1/wf/AU_EMOwPGM/codes/continuous/save/continuous/balanced/2022-11-23/BRA/temp_conti/train.log
+2022-11-23 19:51:38,723:INFO: {'EMO Rules Val Acc-list:'}
+2022-11-23 19:51:38,724:INFO: {'happy: 99.66, sad: 40.38, fear: 69.86, anger: 43.83, surprise: 49.69, disgust: 24.84'}

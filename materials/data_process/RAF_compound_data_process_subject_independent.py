@@ -1,4 +1,5 @@
 # 不按subject划分数据集，所有subject的数据混合到一起后再划分数据集
+# 且实际上没有区分train和test
 import sys
 sys.path.append('/media/data1/wf/AU_EMOwPGM/codes')
 import os
@@ -54,6 +55,8 @@ for phase in phases:
 	RAF_pkl[phase] = {}
 	df = pd.read_csv(os.path.join(raf_path, 'compound/EmoLabel/list_patition_label.txt'), sep=' ',
 					header=None)
+	df = df[df[NAME_COLUMN].str.startswith(phase)]
+	df = df.reset_index().iloc[:, 1:]
 
 	for data_node_i, data_node in enumerate(data_nodes):
 		row_list = df[df[LABEL_COLUMN] == data_node_i+1].index.tolist()
