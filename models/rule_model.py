@@ -117,7 +117,7 @@ def learn_rules(conf, input_info, input_rules, AU_p_d, summary_writer, *args):
                     occ_au.append(priori_au_i)
                     AU_cnt[priori_au_i] += 1
 
-        if len(occ_au) > 1: # len(occ_au) != 0
+        if len(occ_au) >= 1: # len(occ_au) != 0
             num_all_img += 1
             prob_all_au = RadiateAUs(conf, emo_label, AU_cpt, occ_au, loc2, EMO2AU, thresh=0.6) # 计算当前样本中AU的发生概率 P(AU | x)
 
@@ -184,7 +184,7 @@ def test_rules(conf, update, input_info, input_rules, AU_p_d, summary_writer, co
                     if cur_item[0, pos_priori_in_data] == 1:
                         occ_au.append(priori_au_i)
 
-            if len(occ_au) > 1: # len(occ_au) != 0
+            if len(occ_au) >= 1: # len(occ_au) != 0
                 prob_all_au = RadiateAUs(conf, emo_label, AU_cpt, occ_au, loc2, EMO2AU_cpt, thresh=0.6)
                 cur_prob, _ = update(prob_all_au)
                 cur_pred = torch.argmax(cur_prob)

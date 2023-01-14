@@ -131,7 +131,9 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
                 pos_priori_in_data = dataset_AU.index(priori_au)
                 if cur_item[0, pos_priori_in_data] == 1: 
                     occ_au.append(priori_au_i)
-                    AU_cnt[priori_au_i] += 1
+                    # AU_cnt[priori_au_i] += 1
+                    if emo_label >= num_seen: 
+                        AU_cnt[priori_au_i] += 1
 
         if len(occ_au) > 1: # len(occ_au) != 0
             num_all_img += 1
@@ -160,7 +162,10 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
             
             err.backward()
             optim_graph.step()
-            update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
+            # if emo_label >= num_seen:
+            #     update, AU_ij_cnt, AU_cpt, AU_cnt = crop_EMO2AU(conf, update, occ_au, AU_ij_cnt, AU_cpt, AU_cnt)
+            # else:
+            #     update = crop_EMO2AU(conf, update)
             del prob_all_au, cur_prob, cur_pred, err, acc
     update, EMO2AU_cpt, prob_AU = final_return(update, EMO, AU, loc1, loc2)
 

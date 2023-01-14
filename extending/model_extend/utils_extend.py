@@ -23,6 +23,12 @@ def get_config(cfg):
             datasets_cfg = edict(datasets_cfg)
             cfg.source_list = ['labelsAU_record', 'labelsEMO_record']
             cfg.file_list = 'epoch4_model_fold0.pth'
+    elif cfg.dataset == 'BP4D_all':
+        with open('../config/BP4D_all_config.yaml', 'r') as f:
+            datasets_cfg = yaml.safe_load(f)
+            datasets_cfg = edict(datasets_cfg)
+            cfg.source_list = ['labelsAU_record', 'labelsEMO_record']
+            cfg.file_list = 'epoch1_model_fold0.pth'
     elif cfg.dataset == 'DISFA':
         with open('../config/DISFA_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)

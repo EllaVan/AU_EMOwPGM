@@ -17,6 +17,8 @@ from main_rule_extend_CIL import parser2dict
 import torch
 from tensorboardX import SummaryWriter
 
+import numpy as np
+
 def differ_seen_all(dataset_name='BP4D'):
     pre_all_trained_name = 'labelsAU_labelsEMO/epoch4_model_fold0.pth'
 
@@ -97,8 +99,47 @@ def view_file():
     file_info = torch.load(path, map_location='cpu')
     a = 1
 
+def chuli_basic():
+    basic_rule_path = '/media/data1/wf/AU_EMOwPGM/codes/save_balanced/v2/RAF-DB/predsAU_labelsEMO/epoch4_model_fold0.pth'
+    file_info_basic = torch.load(basic_rule_path, map_location='cpu')
+    seen_path = 'save/seen/balanced/2022-12-11_v2/RAF-DB/output.pth'
+    file_info_seen = torch.load(seen_path, map_location='cpu')
+    end_flag = 1
+
+
+def temp1():
+    pre_data_path = 'dataset'
+    dataset_name = 'BP4D_all'
+    data_path = os.path.join(pre_data_path, dataset_name+'.pkl')
+    data_info = torch.load(data_path, map_location='cpu')
+    seen_AU = data_info['train_input_info']['seen_AU']
+    seen_EMO = data_info['train_input_info']['seen_EMO']
+    unseen_AU = data_info['train_input_info']['unseen_AU']
+    unseen_EMO = data_info['train_input_info']['unseen_EMO']
+    record = []
+    for i in range(6):
+        loc = torch.where(seen_EMO==i)[0]
+        AU_i = seen_AU[loc, :]
+        stastic_AUi = torch.sum(AU_i, dim=0)/AU_i.shape[0]
+        record_AUi = stastic_AUi.reshape(1, -1)
+        record.append(record_AUi)
+    for i in range(2):
+        loc = torch.where(unseen_EMO==i+6)[0]
+        AU_i = seen_AU[loc, :]
+        stastic_AUi = torch.sum(AU_i, dim=0)/AU_i.shape[0]
+        record_AUi = stastic_AUi.reshape(1, -1)
+        record.append(record_AUi)
+    record = np.concatenate(record)
+    end_flag = 1
+
+def read1():
+    path = ''
+
+
 if __name__=='__main__':
     # differ_seen_all()
-    test_seen()
+    # test_seen()
     # view_file()
+    # chuli_basic()
+    temp1()
     a = 1

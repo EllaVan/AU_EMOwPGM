@@ -1,0 +1,6 @@
+# dataset_path: '/media/database/data2/Expression/BP4D/BP4D_MTCNN'
+dataset_path_subject_independent: '/media/data1/wf/AU_EMOwPGM/codes/dataset/SAMM/SAMM_subject_independent.pkl'
+num_classes: 17
+neighbor_num: 4
+loc1: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+loc2: [15, 16]

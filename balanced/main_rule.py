@@ -35,8 +35,8 @@ def parser2dict():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--fold', type=int, default=0)
     # parser.add_argument('--dataset_order', type=str, default=['RAF-DB', 'AffectNet', 'BP4D', 'DISFA'])
-    parser.add_argument('--dataset_order', type=str, default=['BP4D'])
-    parser.add_argument('--outdir', type=str, default='save/rule/randomPriori')
+    parser.add_argument('--dataset_order', type=str, default=['CK+'])
+    parser.add_argument('--outdir', type=str, default='save/rule_tmp')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
     parser.add_argument('-j', '--num_workers', default=16, type=int, metavar='N', help='number of data loading workers (default: 4)')
@@ -50,7 +50,7 @@ def parser2dict():
     parser.add_argument('--zeroPad', type=float, default=1e-5)
 
     # --------------------settings for balanced-------------------
-    parser.add_argument('--lr_relation', type=float, default=0.1240226476139121)
+    parser.add_argument('--lr_relation', type=float, default=1e-2)
     parser.add_argument('--isFocal_Loss', type=bool, default=True)
     parser.add_argument('--isClass_Weight', type=bool, default=False)
     parser.add_argument('--isClass_Weight_decay', type=bool, default=False)
@@ -67,6 +67,12 @@ def get_config(cfg):
             datasets_cfg = edict(datasets_cfg)
             cfg.source_list = ['labelsAU_record', 'labelsEMO_record']
             cfg.file_list = 'epoch4_model_fold0.pth'
+    elif cfg.dataset == 'BP4D_all':
+        with open('../config/BP4D_allconfig.yaml', 'r') as f:
+            datasets_cfg = yaml.safe_load(f)
+            datasets_cfg = edict(datasets_cfg)
+            cfg.source_list = ['labelsAU_record', 'labelsEMO_record']
+            cfg.file_list = 'epoch4_model_fold0.pth'
     elif cfg.dataset == 'DISFA':
         with open('../config/DISFA_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)
@@ -79,11 +85,18 @@ def get_config(cfg):
             datasets_cfg = edict(datasets_cfg)
             cfg.source_list = ['predsAU_record', 'labelsEMO_record']
             cfg.file_list = 'epoch4_model_fold0.pth'
+    elif cfg.dataset == 'CK+':
+        with open('../config/CK_config.yaml', 'r') as f:
+            datasets_cfg = yaml.safe_load(f)
+            datasets_cfg = edict(datasets_cfg)
+            cfg.source_list = ['predsAU_record', 'labelsEMO_record']
+            cfg.file_list = 'epoch1_model_fold0.pth'
     elif cfg.dataset == 'RAF-DB-compound':
         with open('../config/RAF_compound_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)
             datasets_cfg = edict(datasets_cfg)
             cfg.source_list = ['predsAU_record', 'labelsEMO_record']
+            cfg.file_list = 'epoch1_model_fold0.pth'
     elif cfg.dataset == 'AffectNet':
         with open('../config/AffectNet_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)
@@ -150,10 +163,13 @@ def main(conf):
             AU_ij_cnt[:, au_ij] = AU_cpt[:, au_ij] * AU_cnt[au_ij]
         input_rules = EMO2AU_cpt, AU_cpt, prob_AU, ori_size, num_all_img, AU_ij_cnt, AU_cnt, EMO, AU
 
-        input_rules = randomPriori(input_rules) #纯数据驱动，先验知识是随机生成的
+        # input_rules = randomPriori(input_rules) #纯数据驱动，先验知识是随机生成的
         
         # 训练与测试
         summary_writer = SummaryWriter(cur_outdir)
+        conf.lr_relation = 0.1
+        # for lr_i in range(10):
+        #     conf.lr_relation = conf.lr_relation / 10.0
         output_rules, train_records, model = learn_rules(conf, train_rules_input, input_rules, AU_p_d, summary_writer)#, change_w)
         train_rules_loss, train_rules_acc, train_confu_m = train_records
         train_info = {}
@@ -193,16 +209,17 @@ def main(conf):
         logging.info(infostr_EMO)
         infostr_EMO = {'EMO Rules Val Acc-list:'}
         logging.info(infostr_EMO)
+        val_confu_m2 = val_confu_m.clone()
         for i in range(val_confu_m.shape[0]):
-            val_confu_m[:, i] = val_confu_m[:, i] / val_confu_m[:, i].sum(axis=0)
-        infostr_EMO = dataset_info.info_EMO(torch.diag(val_confu_m).cpu().numpy().tolist())
+            val_confu_m2[:, i] = val_confu_m2[:, i] / val_confu_m2[:, i].sum(axis=0)
+        infostr_EMO = dataset_info.info_EMO(torch.diag(val_confu_m2).cpu().numpy().tolist())
         logging.info(infostr_EMO)
         del train_rules_loss, train_rules_acc, val_rules_loss, val_rules_acc     
     
     a = 1
 
 if __name__=='__main__':
-    # setup_seed(0)
+    setup_seed(0)
     conf = parser2dict()
     cur_time = datetime.datetime.now(pytz.timezone('Asia/Shanghai'))
     print(cur_time)
@@ -223,14 +240,14 @@ if __name__=='__main__':
             prefix = prefix + '_wClassWeight'
     else:
         prefix = prefix + '_UniformWeight'
-    conf.outdir = os.path.join(conf.outdir, cur_day+'_v2', prefix)
+    conf.outdir = os.path.join(conf.outdir, cur_day)#, prefix)
 
     '''
     conf.outdir = os.path.join('/media/data1/wf/AU_EMOwPGM/codes/continuous/save/continuous/balanced/2022-11-23/BRA', 'temp_conti')
     '''
 
     global device
-    conf.gpu = 2
+    conf.gpu = 1
     device = torch.device('cuda:{}'.format(conf.gpu))
     conf.device = device
     torch.cuda.set_device(conf.gpu)

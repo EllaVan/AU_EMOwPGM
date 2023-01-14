@@ -226,7 +226,7 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
 
             optim_graph.zero_grad()
             
-            pre_train_idx = 0.66*len(labelsEMO)
+            # pre_train_idx = 0.66*len(labelsEMO)
             pre_train_idx = conf.pre_train_idx
             if idx < pre_train_idx:
                 # adjust_rules_lr_v2(optim_graph, init_lr, idx, train_size)
@@ -243,23 +243,23 @@ def learn_rules(conf, input_info, input_rules, seen_trained_rules, AU_p_d, summa
                 cur_prob, cur_temp_prob, cur_seen_prob, cur_seen_temp_prob, _ = update(prob_all_au)
                 cur_pred = torch.argmax(cur_prob)
 
-                seen_trained_prob, seen_trained_temp_prob, _, _, _ = seen_trained_model(prob_all_au)
+                # seen_trained_prob, seen_trained_temp_prob, _, _, _ = seen_trained_model(prob_all_au)
                 # seen_trained_temp_prob = torch.zeros_like(seen_trained_prob)
                 # KL_loss = cri_KL(update.EMO2AU_cpt[:num_seen, :], target_seen)
                 # KL_loss = torch.abs(cri_KL(cur_prob[:, :num_seen], seen_trained_prob))
                 # KL_loss =cri_KL(cur_temp_prob[:, :num_seen], seen_trained_temp_prob)
-                KL_loss =cri_KL(cur_seen_temp_prob, seen_trained_temp_prob)
-                KL_record.append(KL_loss.item())
-                summary_writer.add_scalar('train_KL', np.array(KL_record).mean(), idx)
+                # KL_loss =cri_KL(cur_seen_temp_prob, seen_trained_temp_prob)
+                # KL_record.append(KL_loss.item())
+                # summary_writer.add_scalar('train_KL', np.array(KL_record).mean(), idx)
 
                 cls_loss = criterion(cur_prob, emo_label)
                 cls_record.append(cls_loss.item())
                 summary_writer.add_scalar('train_cls', np.array(cls_record).mean(), idx)
-                if emo_label < num_seen:
-                    err = cls_loss
-                else:
-                    err = cls_loss + 0.5 * KL_loss
-                # err = cls_loss + 0.5 * KL_loss
+                # if emo_label < num_seen:
+                #     err = cls_loss
+                # else:
+                #     err = cls_loss + 0.5 * KL_loss
+                err = cls_loss# + 0.5 * KL_loss
                 acc = torch.eq(cur_pred, emo_label).sum().item()
                 confu_m = confusion_matrix(cur_pred.data.cpu().numpy().reshape(1,).tolist(), labels=emo_label.data.cpu().numpy().tolist(), conf_matrix=confu_m)
 

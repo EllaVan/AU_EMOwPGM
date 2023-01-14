@@ -203,6 +203,10 @@ def get_config(cfg):
         with open('config/RAF_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)
             datasets_cfg = edict(datasets_cfg)
+    elif cfg.dataset == 'CK+':
+        with open('config/CK_config.yaml', 'r') as f:
+            datasets_cfg = yaml.safe_load(f)
+            datasets_cfg = edict(datasets_cfg)
     elif cfg.dataset == 'RAF-DB-compound':
         with open('config/RAF_compound_config.yaml', 'r') as f:
             datasets_cfg = yaml.safe_load(f)

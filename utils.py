@@ -101,7 +101,7 @@ def plot_confusion_matrix(cm, classes, normalize=False, title='Confusion matrix'
     plt.savefig(save_path, dpi=500)
 
 def getDatasetInfo(conf):
-    if conf.dataset == 'BP4D' or conf.dataset == 'CASME':
+    if conf.dataset == 'BP4D' or conf.dataset == 'BP4D_all' or conf.dataset == 'CASME'or conf.dataset == 'SAMM':
         train_dataset = BP4D(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
         train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)
@@ -109,7 +109,7 @@ def getDatasetInfo(conf):
         test_dataset = BP4D(conf.dataset_path, phase='test', fold=conf.fold, transform=eval_transforms)
         test_len = len(test_dataset)
         test_loader = DataLoader(test_dataset, batch_size=conf.batch_size, shuffle=False, num_workers=conf.num_workers, pin_memory=True)
-    elif conf.dataset == 'RAF-DB' or conf.dataset == 'RAF-DB-compound' or conf.dataset == 'AffectNet':
+    elif conf.dataset == 'RAF-DB' or conf.dataset == 'RAF-DB-compound' or conf.dataset == 'AffectNet' or conf.dataset == 'CK+':
         train_dataset = RAF(conf.dataset_path, phase='train', fold=conf.fold, transform=train_transforms)
         train_len = len(train_dataset)
         train_loader = DataLoader(train_dataset, batch_size=conf.batch_size, shuffle=True, num_workers=conf.num_workers, pin_memory=True)

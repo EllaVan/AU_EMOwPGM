@@ -36,7 +36,7 @@ data_nodes = ['Happily Surprised', 'Happily Disgusted', 'Sadly Fearful', 'Sadly 
 classes = len(data_nodes)
 RAF_pkl['EMO'] = data_nodes
 
-EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = cal_interAUPriori()
+EMO2AU_cpt, prob_AU, EMO_img_num, AU_cpt, EMO, AU = cal_interAUPriori(csv_name='RAF_priori.csv')
 priori = {'EMO2AU_cpt': EMO2AU_cpt,
 		'prob_AU': prob_AU,
 		'EMO_img_num': EMO_img_num,

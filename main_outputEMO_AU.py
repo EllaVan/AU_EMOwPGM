@@ -30,8 +30,8 @@ from utils import *
 from conf import parser2dict, get_config,set_logger,set_outdir,set_env
 
 def update_net_info(conf):
-    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results/DISFA/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch4_model_fold0.pth'
-    conf.net_params_from_dataset = 'DISFA'
+    conf.net_params_from_path = '/media/data1/wf/AU_EMOwPGM/codes/results/BP4D/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch4_model_fold0.pth'
+    conf.net_params_from_dataset = 'BP4D'
     all_info = torch.load(conf.net_params_from_path, map_location='cpu')
     # conf.train_f1_AU = all_info['train_input_info']['AU_info']['mean_f1_score']
     # conf.train_acc_EMO = all_info['train_input_info']['EMO_info']['acc']
@@ -274,7 +274,7 @@ def main(conf):
 
 if __name__=='__main__':
     conf = parser2dict()
-    conf.dataset = 'RAF-DB-compound'
+    conf.dataset = 'CK+'
 
     conf.gpu = 0
     # conf.exp_name = 'Test'

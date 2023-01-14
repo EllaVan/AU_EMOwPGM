@@ -1,7 +1,12 @@
 import torch
+import pickle as pkl
 
-path = '/media/data1/wf/AU_EMOwPGM/codes/results/RAF-DB-compound/Test/subject_independent/bs_128_seed_0_lrEMO_0.0003_lrAU_0.0001_lr_relation_0.001/epoch1_model_fold0.pth'
-info = torch.load(path, map_location='cpu')
+path = '/media/data1/wf/AU_EMOwPGM/codes/dataset/CASME/CASME_subject_independent.pkl'
+
+with open(path, 'rb') as fo:
+    pkl_file = pkl.load(fo)
+
+# info = torch.load(path, map_location='cpu')
 # output_rules = info['output_rules']
 # val_confu_m = info['val_info']['val_confu_m']
 # for i in range(val_confu_m.shape[0]):

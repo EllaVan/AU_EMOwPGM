@@ -27,7 +27,7 @@ from tensorboardX import SummaryWriter
 from conf import ensure_dir, set_logger
 from model_extend.utils_extend import *
 # from model_extend.rule_extend2 import UpdateGraph
-# from model_extend.rule_extend2 import learn_rules, test_rules#, generate_seen_sample
+from model_extend.rule_extend2 import learn_rules, test_rules#, generate_seen_sample
 # from models.AU_EMO_BP import UpdateGraph_continuous as UpdateGraph
 from models.rule_model import learn_rules, test_rules
 from losses import *
@@ -39,8 +39,8 @@ def parser2dict():
     parser.add_argument('--gpu', type=str, default='cuda:1')
     parser.add_argument('--fold', type=int, default=0)
     # parser.add_argument('--dataset_order', type=str, default=['BP4D', 'RAF-DB', 'DISFA', 'AffectNet'])
-    parser.add_argument('--dataset_order', type=str, default=['DISFA', 'BP4D', ])
-    parser.add_argument('--outdir', type=str, default='save/unseen/CIL/balanced')
+    parser.add_argument('--dataset_order', type=str, default=['BP4D', ])
+    parser.add_argument('--outdir', type=str, default='save/unseen/CIL/abalation_with')
     parser.add_argument('--rule_dir', type=str, default='save/seen')
     parser.add_argument('-b','--batch-size', default=128, type=int, metavar='N', help='mini-batch size (default: 128)')
     
@@ -100,15 +100,15 @@ def main(conf):
         # train_inputAU = unseen_train_inputAU
         # train_inputEMO = unseen_train_inputEMO
         
-        # samplesAU1, samplesEMO1 = generate_seen_sample_v2(conf, seen_trained_rules)
-        # repeat_size = int((unseen_train_inputEMO.shape[0] // len(samplesEMO1))/num_unseen*num_seen)
-        # repeat_size = int((unseen_train_inputEMO.shape[0]/num_unseen*num_seen)// len(samplesEMO1) / 10)
-        # samplesAU = samplesAU1.repeat(repeat_size, 1)
-        # samplesEMO = torch.concat(samplesEMO1 * repeat_size)
+        samplesAU1, samplesEMO1 = generate_seen_sample_v2(conf, seen_trained_rules)
+        repeat_size = int((unseen_train_inputEMO.shape[0] // len(samplesEMO1))/num_unseen*num_seen)
+        repeat_size = int((unseen_train_inputEMO.shape[0]/num_unseen*num_seen)// len(samplesEMO1) / 10)
+        samplesAU = samplesAU1.repeat(repeat_size, 1)
+        samplesEMO = torch.concat(samplesEMO1 * repeat_size)
 
-        # conf.pre_train_alpha = 0.66
-        # pre_train_idx = int(conf.pre_train_alpha*unseen_train_inputEMO.shape[0])
-        # conf.pre_train_idx = pre_train_idx
+        conf.pre_train_alpha = 0#.66
+        pre_train_idx = int(conf.pre_train_alpha*unseen_train_inputEMO.shape[0])
+        conf.pre_train_idx = pre_train_idx
         # unseen_train_inputAU, unseen_train_inputEMO = shuffle_input(unseen_train_inputAU, unseen_train_inputEMO)
         # part1_unseen_trainAU = unseen_train_inputAU[:pre_train_idx, :]
         # part1_unseen_trainEMO = unseen_train_inputEMO[:pre_train_idx]
@@ -130,8 +130,8 @@ def main(conf):
         # samplek = 1000
         # samplesAU, samplesEMO = sample_seen(seen_trained_rules[-2], seen_train_inputAU, seen_train_inputEMO, ori_samplek=samplek)
 
-        samplesAU = seen_train_inputAU
-        samplesEMO = seen_train_inputEMO
+        # samplesAU = seen_train_inputAU
+        # samplesEMO = seen_train_inputEMO
 
         # unseen_train_inputAU2 = torch.cat((unseen_train_inputAU, unseen_train_inputAU))
         # unseen_train_inputEMO2 = torch.cat((unseen_train_inputEMO, unseen_train_inputEMO))
@@ -212,7 +212,8 @@ if __name__=='__main__':
     cur_time = str(cur_time).split('.')[0]
     cur_day = cur_time.split(' ')[0]
     cur_clock = cur_time.split(' ')[1]
-    conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day+'_v3')
+    # conf.outdir = os.path.join(conf.outdir, 'seen_trained_cat_unseen_priori', cur_day)
+    conf.outdir = os.path.join(conf.outdir, cur_day)
 
     global device
     conf.gpu = 1

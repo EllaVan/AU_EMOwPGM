@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 
 
-def cal_interAUPriori():
+def cal_interAUPriori(csv_name='AU_EMO_priori.csv'):
     cur_path = os.path.dirname(__file__)
-    EMO2AU_df = pd.read_csv(os.path.join(cur_path, 'AU_EMO_priori.csv'))
+    EMO2AU_df = pd.read_csv(os.path.join(cur_path, csv_name))
     EMO2AU_df = EMO2AU_df.fillna(0)
     
     EMO = list(EMO2AU_df.iloc[:, 0])
